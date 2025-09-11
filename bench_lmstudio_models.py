@@ -220,6 +220,20 @@ def sample_ram_hwm(stop_evt, interval=1.0):
         time.sleep(interval)
     return sys_hwm, lmstudio_hwm
 
+def snapshot_memory():
+    vm = psutil.virtual_memory()
+    sys_used = vm.total - vm.available
+    rss_sum = 0
+    for p in psutil.process_iter(["name", "cmdline", "memory_info"]):
+        name = (p.info.get("name") or "").lower()
+        cmd  = " ".join(p.info.get("cmdline") or []).lower()
+        if "lm studio" in name or "lmstudio" in cmd or "lms " in cmd:
+            try:
+                rss_sum += p.info["memory_info"].rss
+            except Exception:
+                pass
+    return {"system_used_bytes": sys_used, "lmstudio_rss_bytes": rss_sum}
+
 def extract_html(text):
     # Prefer explicit HTML tags
     m = re.search(r"(<html[\s\S]*?</html>)", text, re.I)
@@ -278,9 +292,20 @@ def main():
         print(f"\n=== Benchmarking {model} ===", flush=True)
         unload_all()
 
+        # Memory baseline
+        mem_baseline = snapshot_memory()
+
         # Load model and time it
-        load_time_s = load_model(model)
-        print(f"Loaded in {load_time_s:.2f}s")
+        load_time_s = None
+        load_error = None
+        try:
+            load_time_s = load_model(model)
+            print(f"Loaded in {load_time_s:.2f}s")
+        except Exception as e:
+            load_error = f"load_failed: {type(e).__name__}: {e}"
+            print(f"Load failed for {model}: {e}", file=sys.stderr)
+
+        mem_after_load = snapshot_memory()
 
         # Make safe filenames (model ids may contain slashes or spaces)
         safe_model = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(model))[:200]
@@ -298,30 +323,50 @@ def main():
         t = threading.Thread(target=_ram_thread, daemon=True)
         t.start()
 
-        # Generate once
-        gen_t0 = time.perf_counter()
-        try:
-            result = chat_once(model)
-        finally:
-            # stop samplers
+        # Generate once (only if load succeeded)
+        result = None
+        gen_time_s = None
+        gen_error = None
+        if load_error is None:
+            gen_t0 = time.perf_counter()
+            try:
+                result = chat_once(model)
+                gen_time_s = time.perf_counter() - gen_t0
+            except Exception as e:
+                gen_error = f"generation_failed: {type(e).__name__}: {e}"
+                print(f"Generation failed for {model}: {e}", file=sys.stderr)
+            finally:
+                # stop samplers
+                ram_stop_evt.set()
+                t.join(timeout=3)
+                psamp.stop()
+        else:
+            # stop samplers if we didn't attempt generation
             ram_stop_evt.set()
             t.join(timeout=3)
             psamp.stop()
-        gen_time_s = time.perf_counter() - gen_t0
 
         # Parse powermetrics
         power_stats = parse_powermetrics_log(str(log_path))
         if isinstance(power_stats, dict) and sampler_combo:
             power_stats["samplers"] = sampler_combo
 
-        # Extract HTML
-        text = result["choices"][0]["message"]["content"]
-        html = extract_html(text)
-        html_path = OUT_DIR / f"{safe_model}.html"
-        html_path.write_text(html)
+        # Memory after generation (before unload)
+        mem_after_generation = snapshot_memory()
+
+        # Extract HTML if available
+        html_path = None
+        if result and not gen_error:
+            try:
+                text = result["choices"][0]["message"]["content"]
+            except Exception:
+                text = json.dumps(result)
+            html = extract_html(text)
+            html_path = OUT_DIR / f"{safe_model}.html"
+            html_path.write_text(html)
 
         # Build metrics JSON
-        usage = result.get("usage", {}) or {}
+        usage = (result.get("usage", {}) if result else {}) or {}
         # Fallback tokens/sec if REST stats absent
         completion_tokens = usage.get("completion_tokens") or usage.get("completion_tokens", 0)
         tokens_per_sec_fallback = None
@@ -335,28 +380,56 @@ def main():
             "timestamp": datetime.now().isoformat(),
             "load_time_seconds": load_time_s,
             "generation_time_seconds": gen_time_s,
-            "rest_stats": result.get("stats", {}),
+            "rest_stats": (result.get("stats", {}) if result else {}),
             "usage": usage,
-            "model_info": result.get("model_info", {}),
-            "runtime": result.get("runtime", {}),
+            "model_info": (result.get("model_info", {}) if result else {}),
+            "runtime": (result.get("runtime", {}) if result else {}),
             "power": power_stats,
-            "memory": ram_results,
+            "memory": {
+                "baseline": mem_baseline,
+                "after_load": mem_after_load,
+                "after_generation": mem_after_generation,
+                "delta_since_baseline_after_load": {
+                    "system_used_bytes": (mem_after_load["system_used_bytes"] - mem_baseline["system_used_bytes"]),
+                    "lmstudio_rss_bytes": (mem_after_load["lmstudio_rss_bytes"] - mem_baseline["lmstudio_rss_bytes"]),
+                },
+                "delta_since_baseline_after_generation": {
+                    "system_used_bytes": (mem_after_generation["system_used_bytes"] - mem_baseline["system_used_bytes"]),
+                    "lmstudio_rss_bytes": (mem_after_generation["lmstudio_rss_bytes"] - mem_baseline["lmstudio_rss_bytes"]),
+                },
+                "delta_since_load_after_generation": {
+                    "system_used_bytes": (mem_after_generation["system_used_bytes"] - mem_after_load["system_used_bytes"]),
+                    "lmstudio_rss_bytes": (mem_after_generation["lmstudio_rss_bytes"] - mem_after_load["lmstudio_rss_bytes"]),
+                },
+                "hwm_during_generation": ram_results,
+            },
             "derived": {
                 "tokens_per_second_fallback": tokens_per_sec_fallback
             },
             "files": {
-                "html": str(html_path.resolve()),
+                "html": (str(html_path.resolve()) if html_path else None),
                 "powermetrics_log": str(log_path.resolve())
             },
             "prompt": {
                 "temperature": TEMP,
                 "top_p": TOP_P,
                 "max_tokens": MAX_TOKENS
+            },
+            "errors": {
+                "load": load_error,
+                "generation": gen_error,
             }
         }
         json_path = OUT_DIR / f"{safe_model}.json"
         json_path.write_text(json.dumps(metrics, indent=2))
-        print(f"Saved: {html_path.name}, {json_path.name}")
+        saved_html = html_path.name if html_path else "<no-html>"
+        print(f"Saved: {saved_html}, {json_path.name}")
+
+        # Ensure model is unloaded after usage
+        try:
+            unload_all()
+        except Exception:
+            pass
 
     print(f"\nAll done. Output in: {OUT_DIR.resolve()}")
 
