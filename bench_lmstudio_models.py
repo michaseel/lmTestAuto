@@ -32,7 +32,7 @@ Requirements:
 - if there are no cards yet, create some dummy cards
 - modern and vibrant design
 
-As answer just return the plain HTML document
+As answer return the plain HTML of the working application (script and styles included)
 """
 MAX_TOKENS     = -1
 TEMP           = 0.2

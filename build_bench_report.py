@@ -4,6 +4,12 @@ import json
 import os
 from pathlib import Path
 from urllib.parse import urljoin
+import platform
+import subprocess
+try:
+    import psutil
+except Exception:
+    psutil = None
 
 
 def load_results(folder: Path):
@@ -47,9 +53,54 @@ def to_file_url(path: Path):
         return str(path)
 
 
+def _is_macos():
+    return platform.system() == "Darwin"
+
+
+def _machine_info():
+    info = {"cpu": None, "gpu": None, "ram_bytes": None}
+    # CPU
+    cpu = None
+    if _is_macos():
+        try:
+            out = subprocess.run(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True, timeout=2)
+            if out.stdout.strip():
+                cpu = out.stdout.strip()
+        except Exception:
+            pass
+    info["cpu"] = cpu or (platform.processor() or platform.machine())
+    # RAM
+    if psutil is not None:
+        try:
+            info["ram_bytes"] = psutil.virtual_memory().total
+        except Exception:
+            info["ram_bytes"] = None
+    else:
+        info["ram_bytes"] = None
+    # GPU (macOS)
+    gpu = None
+    if _is_macos():
+        try:
+            out = subprocess.run(["/usr/sbin/system_profiler", "SPDisplaysDataType"], capture_output=True, text=True, timeout=5)
+            models = []
+            for line in out.stdout.splitlines():
+                if "Chipset Model:" in line:
+                    parts = line.split(":", 1)
+                    if len(parts) == 2:
+                        models.append(parts[1].strip())
+            if models:
+                # dedupe preserving order
+                gpu = ", ".join(dict.fromkeys(models))
+        except Exception:
+            pass
+    info["gpu"] = gpu
+    return info
+
+
 def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path: Path = None):
     # Prepare normalized rows for the table
     records = []
+    total_gen_time = 0.0
     for p, d in rows:
         files = d.get("files") or {}
         power = d.get("power") or {}
@@ -59,6 +110,20 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
         prompt_text_in_json = d.get("prompt_text") or prompt.get("text")
         if prompt_text is None:
             prompt_text = prompt_text_in_json
+        mi = d.get("model_info") or {}
+        rt = d.get("runtime") or {}
+        params = mi.get("parameters") or mi.get("n_params") or mi.get("params") or rt.get("n_params")
+        active = mi.get("active_parameters") or rt.get("n_active") or mi.get("n_active")
+        quant = mi.get("quantization") or mi.get("quant") or rt.get("quantization") or rt.get("q_type")
+        mi_compact = " | ".join(filter(None, [
+            (f"params: {params}" if params is not None else None),
+            (f"active: {active}" if active is not None else None),
+            (f"quant: {quant}" if quant is not None else None),
+        ])) or None
+        gstats = power.get("gpu_watts") or {}
+        gen_time = d.get("generation_time_seconds")
+        if isinstance(gen_time, (int, float)):
+            total_gen_time += gen_time
         rec = {
             "model": d.get("model"),
             "timestamp": d.get("timestamp"),
@@ -70,8 +135,9 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
             "total_tokens": usage.get("total_tokens"),
             "cpu_w_avg": (power.get("cpu_watts") or {}).get("avg"),
             "cpu_w_max": (power.get("cpu_watts") or {}).get("max"),
-            "gpu_w_avg": (power.get("gpu_watts") or {}).get("avg"),
-            "gpu_w_max": (power.get("gpu_watts") or {}).get("max"),
+            "gpu_w_avg": gstats.get("avg"),
+            "gpu_w_max": gstats.get("max"),
+            "gpu_w_min": gstats.get("min"),
             "ane_w_avg": (power.get("ane_watts") or {}).get("avg"),
             "ane_w_max": (power.get("ane_watts") or {}).get("max"),
             "samplers": power.get("samplers"),
@@ -86,6 +152,7 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
             "html_path": files.get("html"),
             "log_path": files.get("powermetrics_log"),
             "raw_json_path": str(p),
+            "model_info_compact": mi_compact,
             "settings": {
                 "temperature": prompt.get("temperature"),
                 "top_p": prompt.get("top_p"),
@@ -94,6 +161,13 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
             },
         }
         records.append(rec)
+
+    summary = {
+        "models": len(records),
+        "total_generation_time_seconds": total_gen_time,
+        "avg_generation_time_seconds": (total_gen_time/len(records) if records else None),
+        "machine": _machine_info(),
+    }
 
     # Inline CSS and JS for a self-contained report
     css = """
@@ -111,11 +185,15 @@ input[type="search"]{padding:6px 8px;border:1px solid #ddd;border-radius:6px;min
 details{margin:4px 0}
 code{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:1px 4px}
 .nowrap{white-space:nowrap}
+.cols{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.cols label{display:flex;align-items:center;gap:6px;border:1px solid #e2e8f0;padding:4px 8px;border-radius:8px;background:#f8fafc}
+.hidden{display:none}
 """
 
     # JS sorting/filtering and rendering
     js = """
 const DATA = REPLACEME_DATA;
+const SUMMARY = REPLACEME_SUMMARY;
 
 let sortKey = 'model';
 let sortDir = 1; // 1 asc, -1 desc
@@ -150,25 +228,29 @@ function render(){
     const linkHtml = r.html_path ? `<a href="${r.html_url}" target="_blank">HTML</a>` : '<span class="muted">n/a</span>';
     const linkLog = r.log_path ? `<a href="${r.log_url}" target="_blank">Log</a>` : '<span class="muted">n/a</span>';
     tr.innerHTML = `
-      <td class="nowrap">${r.model || '-'}</td>
-      <td>${r.timestamp ? new Date(r.timestamp).toLocaleString() : '-'}</td>
-      <td class="nowrap">${r.settings.gpu_setting?`<span class="tag">gpu:${r.settings.gpu_setting}</span>`:''} <span class="tag">T=${r.settings.temperature ?? '-'}</span> <span class="tag">p=${r.settings.top_p ?? '-'}</span></td>
-      <td>${r.load_time_seconds?.toFixed?.(2) ?? '-'}</td>
-      <td>${r.generation_time_seconds?.toFixed?.(2) ?? '-'}</td>
-      <td>${r.tokens_per_second?.toFixed?.(2) ?? '-'}</td>
-      <td>${r.prompt_tokens ?? '-'}</td>
-      <td>${r.completion_tokens ?? '-'}</td>
-      <td>${r.total_tokens ?? '-'}</td>
-      <td>${r.cpu_w_avg?.toFixed?.(2) ?? '-'}</td>
-      <td>${r.gpu_w_avg?.toFixed?.(2) ?? '-'}</td>
-      <td>${r.ane_w_avg?.toFixed?.(2) ?? '-'}</td>
-      <td>${formatBytes(r.mem_deltas.after_load_lms)}</td>
-      <td>${formatBytes(r.mem_deltas.after_gen_lms)}</td>
-      <td>${linkHtml} · ${linkLog} · <a href="${r.json_url}" target="_blank">JSON</a></td>
+      <td class="col-model nowrap">${r.model || '-'}</td>
+      <td class="col-timestamp">${r.timestamp ? new Date(r.timestamp).toLocaleString() : '-'}</td>
+      <td class="col-settings nowrap">${r.settings.gpu_setting?`<span class=\"tag\">gpu:${r.settings.gpu_setting}</span>`:''} <span class="tag">T=${r.settings.temperature ?? '-'}</span> <span class="tag">p=${r.settings.top_p ?? '-'}</span></td>
+      <td class="col-load_time_seconds">${r.load_time_seconds?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-generation_time_seconds">${r.generation_time_seconds?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-tokens_per_second">${r.tokens_per_second?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-prompt_tokens">${r.prompt_tokens ?? '-'}</td>
+      <td class="col-completion_tokens">${r.completion_tokens ?? '-'}</td>
+      <td class="col-total_tokens">${r.total_tokens ?? '-'}</td>
+      <td class="col-model_info_compact">${r.model_info_compact ?? '-'}</td>
+      <td class="col-cpu_w_avg">${r.cpu_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_avg">${r.gpu_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_max">${r.gpu_w_max?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_min">${r.gpu_w_min?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-ane_w_avg">${r.ane_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-mem_after_load">${formatBytes(r.mem_deltas.after_load_lms)}</td>
+      <td class="col-mem_after_gen">${formatBytes(r.mem_deltas.after_gen_lms)}</td>
+      <td class="col-artifacts">${linkHtml} · ${linkLog} · <a href="${r.json_url}" target="_blank">JSON</a></td>
     `;
     tbody.appendChild(tr);
   }
   document.querySelector('#count').textContent = rows.length;
+  applyColumnVisibility();
 }
 
 function setupSort(){
@@ -181,10 +263,52 @@ function setupSort(){
     });
   });
 }
+const DEFAULT_HIDDEN = new Set(["timestamp","settings","total_tokens","cpu_w_avg","ane_w_avg"]);
+
+function setupColumnToggles(){
+  const wrapper = document.querySelector('#col-toggles');
+  const cols = Array.from(document.querySelectorAll('#tbl th')).map(th=>({ key: th.dataset.key, label: th.textContent }));
+  for(const c of cols){
+    if(!c.key) continue;
+    const id = `col_${c.key}`;
+    const checked = !DEFAULT_HIDDEN.has(c.key);
+    const lab = document.createElement('label');
+    lab.innerHTML = `<input type="checkbox" id="${id}" ${checked?'checked':''}> ${c.label}`;
+    wrapper.appendChild(lab);
+    lab.querySelector('input').addEventListener('change', applyColumnVisibility);
+  }
+  applyColumnVisibility();
+}
+
+function applyColumnVisibility(){
+  const checks = Array.from(document.querySelectorAll('#col-toggles input[type="checkbox"]'));
+  const visible = new Set(checks.filter(c=>c.checked).map(c=>c.id.replace('col_','')));
+  document.querySelectorAll('#tbl th').forEach(th=>{
+    const key = th.dataset.key;
+    if(!key) return;
+    th.classList.toggle('hidden', !visible.has(key));
+  });
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+    Array.from(tr.children).forEach(td=>{
+      const m = td.className.match(/col-([A-Za-z0-9_]+)/);
+      if(!m) return;
+      const key = m[1];
+      td.classList.toggle('hidden', !visible.has(key));
+    });
+  });
+}
 
 window.addEventListener('DOMContentLoaded',()=>{
   setupSort();
+  setupColumnToggles();
   document.querySelector('#search').addEventListener('input', render);
+  // Fill summary
+  if(SUMMARY){
+    const el = document.querySelector('#summary');
+    const ram = SUMMARY.machine.ram_bytes;
+    const ramStr = ram? (ram/1073741824).toFixed(1)+' GB' : '-';
+    el.innerHTML = `<div class="small"><strong>Machine:</strong> CPU: ${SUMMARY.machine.cpu || '-'} · GPU: ${SUMMARY.machine.gpu || '-'} · RAM: ${ramStr}<br><strong>Models:</strong> ${SUMMARY.models} · <strong>Total gen time:</strong> ${(SUMMARY.total_generation_time_seconds||0).toFixed(2)} s · <strong>Avg gen time:</strong> ${SUMMARY.avg_generation_time_seconds?SUMMARY.avg_generation_time_seconds.toFixed(2):'-'} s</div>`;
+  }
   render();
 });
 """
@@ -197,6 +321,7 @@ window.addEventListener('DOMContentLoaded',()=>{
 
     # Build HTML doc
     data_json = json.dumps(records)
+    summary_json = json.dumps(summary)
     prompt_html = (f"<pre style='white-space:pre-wrap'>{(prompt_text or 'Not available')}</pre>")
     html = f"""
 <!doctype html>
@@ -210,38 +335,44 @@ window.addEventListener('DOMContentLoaded',()=>{
 <body>
   <h1>{title}</h1>
   <div class="muted small">Generated from {len(records)} result files.</div>
+  <details>
+    <summary><strong>Prompt, Machine & Run Info</strong> (click to expand)</summary>
+    <div id="summary" style="margin:8px 0"></div>
+    {prompt_html}
+  </details>
   <div class="toolbar">
     <input id="search" type="search" placeholder="Filter by model name">
     <div class="small muted">Rows: <span id="count"></span></div>
   </div>
+  <div id="col-toggles" class="cols small"></div>
   <table id="tbl">
     <thead>
       <tr>
-        <th data-key="model">Model</th>
-        <th data-key="timestamp">Timestamp</th>
-        <th data-key="settings">Settings</th>
-        <th data-key="load_time_seconds">Load s</th>
-        <th data-key="generation_time_seconds">Gen s</th>
-        <th data-key="tokens_per_second">Tok/s</th>
-        <th data-key="prompt_tokens">Prompt tok</th>
-        <th data-key="completion_tokens">Compl tok</th>
-        <th data-key="total_tokens">Total tok</th>
-        <th data-key="cpu_w_avg">CPU W(avg)</th>
-        <th data-key="gpu_w_avg">GPU W(avg)</th>
-        <th data-key="ane_w_avg">ANE W(avg)</th>
-        <th data-key="mem_deltas.after_load_lms">LM RSS Δ load</th>
-        <th data-key="mem_deltas.after_gen_lms">LM RSS Δ gen</th>
-        <th>Artifacts</th>
+        <th class="col-model" data-key="model">Model</th>
+        <th class="col-timestamp" data-key="timestamp">Timestamp</th>
+        <th class="col-settings" data-key="settings">Settings</th>
+        <th class="col-load_time_seconds" data-key="load_time_seconds">Load s</th>
+        <th class="col-generation_time_seconds" data-key="generation_time_seconds">Gen s</th>
+        <th class="col-tokens_per_second" data-key="tokens_per_second">Tok/s</th>
+        <th class="col-prompt_tokens" data-key="prompt_tokens">Prompt tok</th>
+        <th class="col-completion_tokens" data-key="completion_tokens">Compl tok</th>
+        <th class="col-total_tokens" data-key="total_tokens">Total tok</th>
+        <th class="col-model_info_compact" data-key="model_info_compact">Model info</th>
+        <th class="col-cpu_w_avg" data-key="cpu_w_avg">CPU W(avg)</th>
+        <th class="col-gpu_w_avg" data-key="gpu_w_avg">GPU W(avg)</th>
+        <th class="col-gpu_w_max" data-key="gpu_w_max">GPU W(peak)</th>
+        <th class="col-gpu_w_min" data-key="gpu_w_min">GPU W(low)</th>
+        <th class="col-ane_w_avg" data-key="ane_w_avg">ANE W(avg)</th>
+        <th class="col-mem_deltas.after_load_lms" data-key="mem_deltas.after_load_lms">LM RSS Δ load</th>
+        <th class="col-mem_deltas.after_gen_lms" data-key="mem_deltas.after_gen_lms">LM RSS Δ gen</th>
+        <th class="col-artifacts">Artifacts</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 
-  <h2>Prompt</h2>
-  {prompt_html}
-
   <script>
-  {js.replace('REPLACEME_DATA', data_json)}
+  {js.replace('REPLACEME_DATA', data_json).replace('REPLACEME_SUMMARY', summary_json)}
   </script>
 </body>
 </html>
@@ -274,4 +405,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
