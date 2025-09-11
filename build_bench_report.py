@@ -113,13 +113,18 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
         mi = d.get("model_info") or {}
         rt = d.get("runtime") or {}
         params = mi.get("parameters") or mi.get("n_params") or mi.get("params") or rt.get("n_params")
-        active = mi.get("active_parameters") or rt.get("n_active") or mi.get("n_active")
         quant = mi.get("quantization") or mi.get("quant") or rt.get("quantization") or rt.get("q_type")
-        mi_compact = " | ".join(filter(None, [
-            (f"params: {params}" if params is not None else None),
-            (f"active: {active}" if active is not None else None),
-            (f"quant: {quant}" if quant is not None else None),
-        ])) or None
+        def _pretty_params(x):
+            try:
+                v = float(x)
+                if v >= 1e9:
+                    return f"{v/1e9:.1f}B"
+                if v >= 1e6:
+                    return f"{v/1e6:.1f}M"
+                return str(int(v))
+            except Exception:
+                return str(x) if x is not None else None
+        model_size = _pretty_params(params)
         gstats = power.get("gpu_watts") or {}
         gen_time = d.get("generation_time_seconds")
         if isinstance(gen_time, (int, float)):
@@ -141,18 +146,17 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
             "ane_w_avg": (power.get("ane_watts") or {}).get("avg"),
             "ane_w_max": (power.get("ane_watts") or {}).get("max"),
             "samplers": power.get("samplers"),
-            "mem_deltas": {
-                "after_load_lms": ((mem.get("delta_since_baseline_after_load") or {}).get("lmstudio_rss_bytes")),
-                "after_gen_lms": ((mem.get("delta_since_baseline_after_generation") or {}).get("lmstudio_rss_bytes")),
-                "after_gen_vs_load_lms": ((mem.get("delta_since_load_after_generation") or {}).get("lmstudio_rss_bytes")),
-                "after_load_sys": ((mem.get("delta_since_baseline_after_load") or {}).get("system_used_bytes")),
-                "after_gen_sys": ((mem.get("delta_since_baseline_after_generation") or {}).get("system_used_bytes")),
-            },
+            "mem_after_load_lms": ((mem.get("delta_since_baseline_after_load") or {}).get("lmstudio_rss_bytes")),
+            "mem_after_gen_lms": ((mem.get("delta_since_baseline_after_generation") or {}).get("lmstudio_rss_bytes")),
+            "mem_after_gen_vs_load_lms": ((mem.get("delta_since_load_after_generation") or {}).get("lmstudio_rss_bytes")),
+            "mem_after_load_sys": ((mem.get("delta_since_baseline_after_load") or {}).get("system_used_bytes")),
+            "mem_after_gen_sys": ((mem.get("delta_since_baseline_after_generation") or {}).get("system_used_bytes")),
             "errors": d.get("errors") or {},
             "html_path": files.get("html"),
             "log_path": files.get("powermetrics_log"),
             "raw_json_path": str(p),
-            "model_info_compact": mi_compact,
+            "model_size": model_size,
+            "quantization": quant,
             "settings": {
                 "temperature": prompt.get("temperature"),
                 "top_p": prompt.get("top_p"),
@@ -237,14 +241,15 @@ function render(){
       <td class="col-prompt_tokens">${r.prompt_tokens ?? '-'}</td>
       <td class="col-completion_tokens">${r.completion_tokens ?? '-'}</td>
       <td class="col-total_tokens">${r.total_tokens ?? '-'}</td>
-      <td class="col-model_info_compact">${r.model_info_compact ?? '-'}</td>
+      <td class="col-model_size">${r.model_size ?? '-'}</td>
+      <td class="col-quantization">${r.quantization ?? '-'}</td>
       <td class="col-cpu_w_avg">${r.cpu_w_avg?.toFixed?.(2) ?? '-'}</td>
       <td class="col-gpu_w_avg">${r.gpu_w_avg?.toFixed?.(2) ?? '-'}</td>
       <td class="col-gpu_w_max">${r.gpu_w_max?.toFixed?.(2) ?? '-'}</td>
       <td class="col-gpu_w_min">${r.gpu_w_min?.toFixed?.(2) ?? '-'}</td>
       <td class="col-ane_w_avg">${r.ane_w_avg?.toFixed?.(2) ?? '-'}</td>
-      <td class="col-mem_after_load">${formatBytes(r.mem_deltas.after_load_lms)}</td>
-      <td class="col-mem_after_gen">${formatBytes(r.mem_deltas.after_gen_lms)}</td>
+      <td class="col-mem_after_load_lms">${formatBytes(r.mem_after_load_lms)}</td>
+      <td class="col-mem_after_gen_lms">${formatBytes(r.mem_after_gen_lms)}</td>
       <td class="col-artifacts">${linkHtml} · ${linkLog} · <a href="${r.json_url}" target="_blank">JSON</a></td>
     `;
     tbody.appendChild(tr);
@@ -283,6 +288,7 @@ function setupColumnToggles(){
 function applyColumnVisibility(){
   const checks = Array.from(document.querySelectorAll('#col-toggles input[type="checkbox"]'));
   const visible = new Set(checks.filter(c=>c.checked).map(c=>c.id.replace('col_','')));
+  const controllable = new Set(Array.from(checks).map(c=>c.id.replace('col_','')));
   document.querySelectorAll('#tbl th').forEach(th=>{
     const key = th.dataset.key;
     if(!key) return;
@@ -290,9 +296,10 @@ function applyColumnVisibility(){
   });
   document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
     Array.from(tr.children).forEach(td=>{
-      const m = td.className.match(/col-([A-Za-z0-9_]+)/);
+      const m = td.className.match(/col-([A-Za-z0-9_.-]+)/);
       if(!m) return;
       const key = m[1];
+      if(!controllable.has(key)) return;
       td.classList.toggle('hidden', !visible.has(key));
     });
   });
@@ -357,15 +364,16 @@ window.addEventListener('DOMContentLoaded',()=>{
         <th class="col-prompt_tokens" data-key="prompt_tokens">Prompt tok</th>
         <th class="col-completion_tokens" data-key="completion_tokens">Compl tok</th>
         <th class="col-total_tokens" data-key="total_tokens">Total tok</th>
-        <th class="col-model_info_compact" data-key="model_info_compact">Model info</th>
+        <th class="col-model_size" data-key="model_size">Model size</th>
+        <th class="col-quantization" data-key="quantization">Quantization</th>
         <th class="col-cpu_w_avg" data-key="cpu_w_avg">CPU W(avg)</th>
         <th class="col-gpu_w_avg" data-key="gpu_w_avg">GPU W(avg)</th>
         <th class="col-gpu_w_max" data-key="gpu_w_max">GPU W(peak)</th>
         <th class="col-gpu_w_min" data-key="gpu_w_min">GPU W(low)</th>
         <th class="col-ane_w_avg" data-key="ane_w_avg">ANE W(avg)</th>
-        <th class="col-mem_deltas.after_load_lms" data-key="mem_deltas.after_load_lms">LM RSS Δ load</th>
-        <th class="col-mem_deltas.after_gen_lms" data-key="mem_deltas.after_gen_lms">LM RSS Δ gen</th>
-        <th class="col-artifacts">Artifacts</th>
+        <th class="col-mem_after_load_lms" data-key="mem_after_load_lms">LM RSS Δ load</th>
+        <th class="col-mem_after_gen_lms" data-key="mem_after_gen_lms">LM RSS Δ gen</th>
+        <th class="col-artifacts" data-key="artifacts">Artifacts</th>
       </tr>
     </thead>
     <tbody></tbody>

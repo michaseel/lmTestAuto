@@ -41,7 +41,7 @@ TOP_P          = 0.95
 GPU_SETTING    = "max"                       # lms load --gpu max
 USE_ASITOP_CSV = False                       # set True if you installed asitop-csv-logger and want to use it
 POWERMETRICS_INTERVAL_MS = 1000              # sample every 1s
-GEN_TIMEOUT_SECONDS = 300                    # interrupt generation after 5 minutes
+GEN_TIMEOUT_SECONDS = 200                    # interrupt generation after ~3m20s
 GEN_TIMER_INTERVAL_SECONDS = 2               # print timer update every 2s
 # ---------------------------
 
@@ -540,6 +540,24 @@ def main():
             unload_all()
         except Exception:
             pass
+
+        # Incremental report update after each model
+        try:
+            OUT_DIR.mkdir(parents=True, exist_ok=True)
+            report_path = OUT_DIR / "index.html"
+            if report_builder is not None:
+                rows = report_builder.load_results(OUT_DIR)
+                html = report_builder.build_html(rows, title="LM Studio Bench Report", prompt_text=PROMPT, out_path=report_path)
+                report_path.write_text(html)
+                print(f"Updated report: {report_path.resolve()}")
+            else:
+                try:
+                    run([sys.executable, str(Path(__file__).parent / 'build_bench_report.py'), str(OUT_DIR), '--out', str(report_path)])
+                    print(f"Updated report: {report_path.resolve()}")
+                except Exception as e:
+                    print(f"Report generation failed: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"Report generation error: {e}", file=sys.stderr)
 
     # Build an index.html report at the end
     try:
