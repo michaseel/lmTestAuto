@@ -5,6 +5,10 @@ from pathlib import Path
 
 import requests
 import psutil
+try:
+    import build_bench_report as report_builder
+except Exception:
+    report_builder = None
 
 # --------- Config ----------
 API_BASE       = os.environ.get("LMSTUDIO_API_BASE", "http://127.0.0.1:1234")
@@ -436,7 +440,24 @@ def main():
         except Exception:
             pass
 
-    print(f"\nAll done. Output in: {OUT_DIR.resolve()}")
+    # Build an index.html report at the end
+    try:
+        if report_builder is not None:
+            rows = report_builder.load_results(OUT_DIR)
+            html = report_builder.build_html(rows, title="LM Studio Bench Report", prompt_text=PROMPT, out_path=OUT_DIR / "index.html")
+            (OUT_DIR / "index.html").write_text(html)
+            print(f"\nReport written to: {(OUT_DIR / 'index.html').resolve()}")
+        else:
+            # Fallback: shell out to the script if import failed
+            try:
+                run([sys.executable, str(Path(__file__).parent / 'build_bench_report.py'), str(OUT_DIR), '--out', str(OUT_DIR / 'index.html')])
+                print(f"\nReport written to: {(OUT_DIR / 'index.html').resolve()}")
+            except Exception as e:
+                print(f"\nReport generation failed: {e}", file=sys.stderr)
+    except Exception as e:
+        print(f"\nReport generation error: {e}", file=sys.stderr)
+
+    print(f"All done. Output in: {OUT_DIR.resolve()}")
 
 if __name__ == "__main__":
     main()
