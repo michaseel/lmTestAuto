@@ -104,10 +104,12 @@ def load_model(model_id):
 ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
 class PowerSampler:
-    def __init__(self, out_path):
+    def __init__(self, out_path, sampler_combo=None, interval_ms=1000):
         self.out_path = out_path
         self.proc = None
         self.stop_evt = threading.Event()
+        self.sampler_combo = sampler_combo
+        self.interval_ms = interval_ms
 
     def start(self):
         if USE_ASITOP_CSV and shutil.which("asitop_csv_logger"):
@@ -117,7 +119,8 @@ class PowerSampler:
         else:
             # Robust default: use powermetrics directly (needs sudo)
             # We don't set -n; we kill it after generation ends.
-            cmd = ["powermetrics", "--samplers", "smc,gpu", "-i", str(POWERMETRICS_INTERVAL_MS)]
+            sampler = self.sampler_combo or "all"
+            cmd = ["powermetrics", "--samplers", sampler, "-i", str(self.interval_ms)]
             if os.name == "posix" and sys.platform == "darwin" and os.geteuid() != 0:
                 print("Warning: powermetrics likely needs sudo; power stats may be empty.", file=sys.stderr)
         self.proc = subprocess.Popen(
@@ -136,28 +139,65 @@ class PowerSampler:
                 pass
 
 def parse_powermetrics_log(path):
-    # Extract CPU/GPU power numbers (W) from powermetrics dumps.
-    cpu_watts, gpu_watts = [], []
+    # Extract CPU/GPU/ANE power numbers (W) from powermetrics dumps.
+    cpu_watts, gpu_watts, ane_watts = [], [], []
+    current_section = None
     with open(path, "r", errors="ignore") as f:
         for line in f:
             s = ansi_escape.sub("", line.strip())
-            # common powermetrics lines:
-            # "CPU Power: 12.34 W"
-            # "GPU Power: 7.89 W"
-            m = re.search(r"CPU Power:\s*([\d.]+)\s*W", s, re.I)
-            if m:
-                cpu_watts.append(float(m.group(1)))
-            m = re.search(r"GPU Power:\s*([\d.]+)\s*W", s, re.I)
-            if m:
-                gpu_watts.append(float(m.group(1)))
+            # Track current section if lines start with CPU/GPU/ANE
+            msec = re.match(r"^(CPU|GPU|ANE)\b", s, re.I)
+            if msec:
+                current_section = msec.group(1).upper()
+            # Direct power lines e.g., "CPU Power: 12.3 W" or "GPU Power: 800 mW"
+            for label, arr in (("CPU", cpu_watts), ("GPU", gpu_watts), ("ANE", ane_watts)):
+                m = re.search(fr"{label}.*?Power:\s*([\d.]+)\s*(m?W)", s, re.I)
+                if m:
+                    val = float(m.group(1))
+                    unit = m.group(2).lower()
+                    arr.append(val / 1000.0 if unit == "mw" else val)
+            # Average power lines within a section e.g., "Average power: 850 mW"
+            m2 = re.search(r"Average power:\s*([\d.]+)\s*(m?W)", s, re.I)
+            if m2 and current_section:
+                val = float(m2.group(1))
+                unit = m2.group(2).lower()
+                watts = val / 1000.0 if unit == "mw" else val
+                if current_section == "CPU":
+                    cpu_watts.append(watts)
+                elif current_section == "GPU":
+                    gpu_watts.append(watts)
+                elif current_section == "ANE":
+                    ane_watts.append(watts)
     def stats(arr):
         return {
-            "avg": sum(arr)/len(arr) if arr else None,
+            "avg": (sum(arr)/len(arr)) if arr else None,
             "max": max(arr) if arr else None,
             "min": min(arr) if arr else None,
             "samples": len(arr),
         }
-    return {"cpu_watts": stats(cpu_watts), "gpu_watts": stats(gpu_watts)}
+    return {"cpu_watts": stats(cpu_watts), "gpu_watts": stats(gpu_watts), "ane_watts": stats(ane_watts)}
+
+def detect_powermetrics_samplers(samples=3, interval_ms=500):
+    combos = [
+        "cpu_power,gpu_power,ane_power",
+        "cpu_power,gpu_power",
+        "cpu_energy,gpu_energy",
+        "cpu_power",
+        "gpu_power",
+        "all",
+    ]
+    last_err = None
+    for combo in combos:
+        cmd = ["powermetrics", "--samplers", combo, "-n", str(samples), "-i", str(interval_ms)]
+        try:
+            res = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            if res.stdout.strip():
+                return combo
+        except subprocess.CalledProcessError as e:
+            last_err = e
+    if last_err:
+        print("powermetrics detection failed:", last_err, file=sys.stderr)
+    return None
 
 def sample_ram_hwm(stop_evt, interval=1.0):
     # Track system used memory and LM Studio process RSS HWM while generating
@@ -221,6 +261,13 @@ def chat_once(model_id):
 def main():
     assert_cli_tools()
     ensure_server()
+    sampler_combo = None
+    if shutil.which("powermetrics"):
+        sampler_combo = detect_powermetrics_samplers(samples=3, interval_ms=500)
+        if sampler_combo:
+            print(f"Using powermetrics samplers: {sampler_combo}")
+        else:
+            print("Falling back to powermetrics default samplers; stats may be limited.", file=sys.stderr)
     models = list_models()
     if not models:
         print("No local LLMs found. Download models in LM Studio first.", file=sys.stderr)
@@ -240,7 +287,7 @@ def main():
 
         # Start power logging + RAM sampler
         log_path = OUT_DIR / f"{safe_model}_powermetrics.log"
-        psamp = PowerSampler(str(log_path))
+        psamp = PowerSampler(str(log_path), sampler_combo=sampler_combo, interval_ms=POWERMETRICS_INTERVAL_MS)
         psamp.start()
         ram_stop_evt = threading.Event()
         ram_results = {}
@@ -264,6 +311,8 @@ def main():
 
         # Parse powermetrics
         power_stats = parse_powermetrics_log(str(log_path))
+        if isinstance(power_stats, dict) and sampler_combo:
+            power_stats["samplers"] = sampler_combo
 
         # Extract HTML
         text = result["choices"][0]["message"]["content"]
