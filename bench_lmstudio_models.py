@@ -26,7 +26,10 @@ Requirements:
 - Thoroughly comment the code.
 - dont use window.alert or window.prompt to add/edit/delete cards
 - if there are no cards yet, create some dummy cards
-- modern and vibrant design"""
+- modern and vibrant design
+
+As answer just return the plain HTML document
+"""
 MAX_TOKENS     = -1
 TEMP           = 0.2
 TOP_P          = 0.95
@@ -262,13 +265,13 @@ def chat_once(model_id):
     }
     # Prefer REST API for rich stats; fallback to OpenAI-compatible /v1
     try:
-        r = requests.post(f"{REST_BASE}/chat/completions", json=payload, timeout=600)
+        r = requests.post(f"{REST_BASE}/chat/completions", json=payload, timeout=300)
         if r.ok:
             return r.json()
         # Some versions may not expose REST chat; fall through
     except Exception:
         pass
-    r = requests.post(f"{OPENAI_BASE}/chat/completions", json=payload, timeout=600)
+    r = requests.post(f"{OPENAI_BASE}/chat/completions", json=payload, timeout=300)
     r.raise_for_status()
     return r.json()
 
@@ -413,7 +416,9 @@ def main():
             "prompt": {
                 "temperature": TEMP,
                 "top_p": TOP_P,
-                "max_tokens": MAX_TOKENS
+                "max_tokens": MAX_TOKENS,
+                "text": PROMPT,
+                "gpu_setting": GPU_SETTING,
             },
             "errors": {
                 "load": load_error,
