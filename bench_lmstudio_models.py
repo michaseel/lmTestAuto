@@ -14,7 +14,8 @@ except Exception:
 API_BASE       = os.environ.get("LMSTUDIO_API_BASE", "http://127.0.0.1:1234")
 OPENAI_BASE    = f"{API_BASE}/v1"
 REST_BASE      = f"{API_BASE}/api/v0"        # returns tokens/sec, TTFT, etc. (LM Studio 0.3.6+)
-OUT_DIR        = Path(f"lmstudio-bench-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+# Save all runs under ./reports/<timestamped-folder>
+OUT_DIR        = Path("reports") / f"lmstudio-bench-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 PROMPT         = """Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks).
 
 Requirements:
@@ -40,6 +41,8 @@ TOP_P          = 0.95
 GPU_SETTING    = "max"                       # lms load --gpu max
 USE_ASITOP_CSV = False                       # set True if you installed asitop-csv-logger and want to use it
 POWERMETRICS_INTERVAL_MS = 1000              # sample every 1s
+GEN_TIMEOUT_SECONDS = 300                    # interrupt generation after 5 minutes
+GEN_TIMER_INTERVAL_SECONDS = 2               # print timer update every 2s
 # ---------------------------
 
 OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -80,19 +83,61 @@ def ensure_server():
         time.sleep(0.5)
     raise RuntimeError("LM Studio server didn't come up at http://127.0.0.1:1234")
 
+def _norm_key(s: str) -> str:
+    s = (s or "").lower()
+    if "/" in s:
+        s = s.split("/")[-1]
+    return re.sub(r"[^a-z0-9]+", "", s)
+
+
 def list_models():
-    # Prefer REST so we get IDs compatible with REST chat calls
-    r = requests.get(f"{REST_BASE}/models", timeout=5)
-    r.raise_for_status()
-    data = r.json()
-    models = [m for m in data.get("data", []) if m.get("type") == "llm"]
-    # Fallback if empty: use `lms ls --llm --json`
-    if not models:
+    # Gather REST API ids (for chat) and CLI keys (for lms load)
+    rest_ids = []
+    try:
+        r = requests.get(f"{REST_BASE}/models", timeout=5)
+        r.raise_for_status()
+        data = r.json()
+        rest_ids = [m.get("id") for m in data.get("data", []) if m.get("type") == "llm" and m.get("id")]
+    except Exception:
+        pass
+
+    cli_map = {}
+    cli_rows = []
+    try:
         ls = run(["lms", "ls", "--llm", "--json"]).stdout
         arr = json.loads(ls)
-        # normalize to REST-like ids if present
-        models = [{"id": m.get("id") or m.get("name") or m.get("model")} for m in arr if m]
-    return [m["id"] for m in models if m.get("id")]
+        for m in arr or []:
+            if not m:
+                continue
+            mid = m.get("id")
+            name = m.get("name") or m.get("model")
+            repo = m.get("repo")
+            cli_key = None
+            if isinstance(mid, str) and "/" in mid:
+                cli_key = mid
+            elif repo and name:
+                cli_key = f"{repo}/{name}"
+            elif name:
+                cli_key = name
+            else:
+                continue
+            cli_rows.append({"cli_key": cli_key, "name": name})
+            cli_map[_norm_key(cli_key)] = cli_key
+            if name:
+                cli_map[_norm_key(name)] = cli_key
+    except Exception:
+        pass
+
+    results = []
+    if rest_ids:
+        for api_id in rest_ids:
+            cli_key = cli_map.get(_norm_key(api_id)) or api_id
+            results.append({"api_id": api_id, "cli_key": cli_key, "display": api_id})
+    else:
+        for row in cli_rows:
+            cli_key = row["cli_key"]
+            results.append({"api_id": row.get("name") or cli_key, "cli_key": cli_key, "display": row.get("name") or cli_key})
+    return results
 
 def unload_all():
     try:
@@ -107,6 +152,37 @@ def load_model(model_id):
     # We pass model_id; LM Studio resolves it (works for downloaded model keys).
     run(["lms", "load", model_id, "--gpu", GPU_SETTING, "-y"])
     return time.perf_counter() - t0
+
+def load_with_fallbacks(api_id: str, cli_key: str):
+    """Try loading with suggested CLI key, then fall back to a few derived variants.
+    Returns (used_key, load_time_seconds). Raises on failure.
+    """
+    candidates = []
+    seen = set()
+    def add(c):
+        if c and c not in seen:
+            candidates.append(c); seen.add(c)
+    add(cli_key)
+    add(api_id)
+    # Replace @8bit -> -8bit
+    if "@" in api_id:
+        add(api_id.replace("@", "-"))
+    # Uppercase variant (common in LM Studio model keys)
+    base = api_id.replace("@", "-")
+    add(base.upper())
+    # Prepend a common namespace if none present
+    if "/" not in base:
+        add(f"lmstudio-community/{base}")
+        add(f"lmstudio-community/{base.upper()}")
+    last_exc = None
+    for cand in candidates:
+        try:
+            t = load_model(cand)
+            return cand, t
+        except Exception as e:
+            last_exc = e
+            continue
+    raise last_exc or RuntimeError(f"Failed to load model for {api_id}")
 
 ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
@@ -255,7 +331,7 @@ def extract_html(text):
     # Fallback: wrap content
     return f"<!doctype html><html><head><meta charset='utf-8'><title>Output</title></head><body><pre>{json.dumps(text)[:20000]}</pre></body></html>"
 
-def chat_once(model_id):
+def chat_once(model_id, timeout_s=GEN_TIMEOUT_SECONDS):
     payload = {
         "model": model_id,
         "messages": [
@@ -269,13 +345,13 @@ def chat_once(model_id):
     }
     # Prefer REST API for rich stats; fallback to OpenAI-compatible /v1
     try:
-        r = requests.post(f"{REST_BASE}/chat/completions", json=payload, timeout=300)
+        r = requests.post(f"{REST_BASE}/chat/completions", json=payload, timeout=timeout_s)
         if r.ok:
             return r.json()
         # Some versions may not expose REST chat; fall through
     except Exception:
         pass
-    r = requests.post(f"{OPENAI_BASE}/chat/completions", json=payload, timeout=300)
+    r = requests.post(f"{OPENAI_BASE}/chat/completions", json=payload, timeout=timeout_s)
     r.raise_for_status()
     return r.json()
 
@@ -294,9 +370,11 @@ def main():
         print("No local LLMs found. Download models in LM Studio first.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Found {len(models)} models: {models}")
-    for model in models:
-        print(f"\n=== Benchmarking {model} ===", flush=True)
+    print(f"Found {len(models)} models: {[m['display'] for m in models]}")
+    for entry in models:
+        model_api_id = entry["api_id"]
+        model_cli_key = entry["cli_key"]
+        print(f"\n=== Benchmarking {model_api_id} (load: {model_cli_key}) ===", flush=True)
         unload_all()
 
         # Memory baseline
@@ -305,17 +383,18 @@ def main():
         # Load model and time it
         load_time_s = None
         load_error = None
+        used_load_key = model_cli_key
         try:
-            load_time_s = load_model(model)
-            print(f"Loaded in {load_time_s:.2f}s")
+            used_load_key, load_time_s = load_with_fallbacks(model_api_id, model_cli_key)
+            print(f"Loaded via '{used_load_key}' in {load_time_s:.2f}s")
         except Exception as e:
             load_error = f"load_failed: {type(e).__name__}: {e}"
-            print(f"Load failed for {model}: {e}", file=sys.stderr)
+            print(f"Load failed for {model_api_id}: {e}", file=sys.stderr)
 
         mem_after_load = snapshot_memory()
 
         # Make safe filenames (model ids may contain slashes or spaces)
-        safe_model = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(model))[:200]
+        safe_model = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(model_api_id))[:200]
 
         # Start power logging + RAM sampler
         log_path = OUT_DIR / f"{safe_model}_powermetrics.log"
@@ -336,13 +415,26 @@ def main():
         gen_error = None
         if load_error is None:
             gen_t0 = time.perf_counter()
+            # Start a small timer printer thread
+            timer_stop_evt = threading.Event()
+            def _timer():
+                while not timer_stop_evt.is_set():
+                    elapsed = int(time.perf_counter() - gen_t0)
+                    print(f"\rGenerating... {elapsed}s", end="", flush=True)
+                    time.sleep(GEN_TIMER_INTERVAL_SECONDS)
+            timer_thread = threading.Thread(target=_timer, daemon=True)
+            timer_thread.start()
             try:
-                result = chat_once(model)
+                result = chat_once(model_api_id, timeout_s=GEN_TIMEOUT_SECONDS)
                 gen_time_s = time.perf_counter() - gen_t0
             except Exception as e:
                 gen_error = f"generation_failed: {type(e).__name__}: {e}"
-                print(f"Generation failed for {model}: {e}", file=sys.stderr)
+                print(f"\nGeneration failed for {model_api_id}: {e}", file=sys.stderr)
             finally:
+                # stop timer and print newline
+                timer_stop_evt.set()
+                timer_thread.join(timeout=1)
+                print("", flush=True)
                 # stop samplers
                 ram_stop_evt.set()
                 t.join(timeout=3)
@@ -361,13 +453,20 @@ def main():
         # Memory after generation (before unload)
         mem_after_generation = snapshot_memory()
 
-        # Extract HTML if available
+        # Extract HTML and save raw text if available
         html_path = None
+        raw_text_path = None
         if result and not gen_error:
             try:
                 text = result["choices"][0]["message"]["content"]
             except Exception:
                 text = json.dumps(result)
+            # Save raw text response
+            raw_text_path = OUT_DIR / f"{safe_model}.txt"
+            try:
+                raw_text_path.write_text(text)
+            except Exception:
+                raw_text_path = None
             html = extract_html(text)
             html_path = OUT_DIR / f"{safe_model}.html"
             html_path.write_text(html)
@@ -383,7 +482,7 @@ def main():
         except Exception:
             pass
         metrics = {
-            "model": model,
+            "model": model_api_id,
             "timestamp": datetime.now().isoformat(),
             "load_time_seconds": load_time_s,
             "generation_time_seconds": gen_time_s,
@@ -415,6 +514,7 @@ def main():
             },
             "files": {
                 "html": (str(html_path.resolve()) if html_path else None),
+                "raw_text": (str(raw_text_path.resolve()) if raw_text_path else None),
                 "powermetrics_log": str(log_path.resolve())
             },
             "prompt": {
@@ -424,6 +524,7 @@ def main():
                 "text": PROMPT,
                 "gpu_setting": GPU_SETTING,
             },
+            "load_key_used": used_load_key if load_time_s is not None else None,
             "errors": {
                 "load": load_error,
                 "generation": gen_error,
@@ -442,16 +543,18 @@ def main():
 
     # Build an index.html report at the end
     try:
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        report_path = OUT_DIR / "index.html"
         if report_builder is not None:
             rows = report_builder.load_results(OUT_DIR)
-            html = report_builder.build_html(rows, title="LM Studio Bench Report", prompt_text=PROMPT, out_path=OUT_DIR / "index.html")
-            (OUT_DIR / "index.html").write_text(html)
-            print(f"\nReport written to: {(OUT_DIR / 'index.html').resolve()}")
+            html = report_builder.build_html(rows, title="LM Studio Bench Report", prompt_text=PROMPT, out_path=report_path)
+            report_path.write_text(html)
+            print(f"\nReport written to: {report_path.resolve()}")
         else:
             # Fallback: shell out to the script if import failed
             try:
-                run([sys.executable, str(Path(__file__).parent / 'build_bench_report.py'), str(OUT_DIR), '--out', str(OUT_DIR / 'index.html')])
-                print(f"\nReport written to: {(OUT_DIR / 'index.html').resolve()}")
+                run([sys.executable, str(Path(__file__).parent / 'build_bench_report.py'), str(OUT_DIR), '--out', str(report_path)])
+                print(f"\nReport written to: {report_path.resolve()}")
             except Exception as e:
                 print(f"\nReport generation failed: {e}", file=sys.stderr)
     except Exception as e:
