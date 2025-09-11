@@ -35,9 +35,9 @@ Requirements:
 
 As answer return the plain HTML of the working application (script and styles included)
 """
-MAX_TOKENS     = -1
-TEMP           = 0.2
-TOP_P          = 0.95
+MAX_TOKENS     = -1                 # set to None to omit and use server default
+TEMP           = None               # None = use model/server default
+TOP_P          = None               # None = use model/server default
 GPU_SETTING    = "max"                       # lms load --gpu max
 USE_ASITOP_CSV = False                       # set True if you installed asitop-csv-logger and want to use it
 POWERMETRICS_INTERVAL_MS = 1000              # sample every 1s
@@ -338,22 +338,32 @@ def chat_once(model_id, timeout_s=GEN_TIMEOUT_SECONDS):
             {"role": "system", "content": "You are a careful front-end engineer."},
             {"role": "user", "content": PROMPT}
         ],
-        "temperature": TEMP,
-        "top_p": TOP_P,
-        "max_tokens": MAX_TOKENS,
         "stream": False
     }
-    # Prefer REST API for rich stats; fallback to OpenAI-compatible /v1
+    if TEMP is not None:
+        payload["temperature"] = TEMP
+    if TOP_P is not None:
+        payload["top_p"] = TOP_P
+    if MAX_TOKENS is not None:
+        payload["max_tokens"] = MAX_TOKENS
+    # Prefer REST API for rich stats; only fallback to OpenAI API if REST endpoint is unavailable
     try:
-        r = requests.post(f"{REST_BASE}/chat/completions", json=payload, timeout=timeout_s)
+        r = requests.post(f"{REST_BASE}/chat/completions", json=payload, timeout=(5, timeout_s))
         if r.ok:
             return r.json()
-        # Some versions may not expose REST chat; fall through
-    except Exception:
-        pass
-    r = requests.post(f"{OPENAI_BASE}/chat/completions", json=payload, timeout=timeout_s)
-    r.raise_for_status()
-    return r.json()
+        # Fallback only if endpoint clearly not found
+        if r.status_code == 404:
+            raise requests.exceptions.ConnectionError("REST chat endpoint not available (404)")
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.Timeout:
+        # Do not retry on a timeout — respect the configured limit
+        raise
+    except (requests.exceptions.ConnectionError, requests.exceptions.InvalidURL):
+        # Try OpenAI-compatible endpoint as a true fallback
+        r2 = requests.post(f"{OPENAI_BASE}/chat/completions", json=payload, timeout=(5, timeout_s))
+        r2.raise_for_status()
+        return r2.json()
 
 def main():
     assert_cli_tools()

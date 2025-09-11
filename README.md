@@ -51,7 +51,8 @@ The script will:
 
 **Customizing**
 - Change the generation prompt by editing `PROMPT` near the top of `bench_lmstudio_models.py`.
-- Tweak temperature, top_p, and `MAX_TOKENS` in the same section.
+- By default, temperature and top_p are not set (the model/server defaults are used). Set `TEMP`/`TOP_P` if you want to override.
+- `MAX_TOKENS` is applied only if not `None`.
 - Set `GPU_SETTING` to control `lms load --gpu` behavior (e.g., `max`, `off`, or a number).
 - Set `USE_ASITOP_CSV = True` if you have `asitop_csv_logger` installed and prefer it.
 

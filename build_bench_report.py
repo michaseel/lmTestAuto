@@ -155,6 +155,7 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
             "html_path": files.get("html"),
             "log_path": files.get("powermetrics_log"),
             "raw_json_path": str(p),
+            "raw_text_path": files.get("raw_text"),
             "model_size": model_size,
             "quantization": quant,
             "settings": {
@@ -229,8 +230,8 @@ function render(){
   for(const r of rows){
     if(q && !(String(r.model).toLowerCase().includes(q))) continue;
     const tr = document.createElement('tr');
-    const linkHtml = r.html_path ? `<a href="${r.html_url}" target="_blank">HTML</a>` : '<span class="muted">n/a</span>';
-    const linkLog = r.log_path ? `<a href="${r.log_url}" target="_blank">Log</a>` : '<span class="muted">n/a</span>';
+    const linkHtml = r.html_path ? `<a href=\"${r.html_url}\" target=\"_blank\">HTML</a>` : '<span class=\"muted\">n/a</span>';
+    const linkText = r.raw_text_path ? `<a href=\"${r.text_url}\" target=\"_blank\">Text</a>` : '<span class=\"muted\">n/a</span>';
     tr.innerHTML = `
       <td class="col-model nowrap">${r.model || '-'}</td>
       <td class="col-timestamp">${r.timestamp ? new Date(r.timestamp).toLocaleString() : '-'}</td>
@@ -250,7 +251,7 @@ function render(){
       <td class="col-ane_w_avg">${r.ane_w_avg?.toFixed?.(2) ?? '-'}</td>
       <td class="col-mem_after_load_lms">${formatBytes(r.mem_after_load_lms)}</td>
       <td class="col-mem_after_gen_lms">${formatBytes(r.mem_after_gen_lms)}</td>
-      <td class="col-artifacts">${linkHtml} · ${linkLog} · <a href="${r.json_url}" target="_blank">JSON</a></td>
+      <td class=\"col-artifacts\">${linkHtml} · ${linkText} · <a href=\"${r.json_url}\" target=\"_blank\">JSON</a></td>
     `;
     tbody.appendChild(tr);
   }
@@ -317,7 +318,77 @@ window.addEventListener('DOMContentLoaded',()=>{
     el.innerHTML = `<div class="small"><strong>Machine:</strong> CPU: ${SUMMARY.machine.cpu || '-'} · GPU: ${SUMMARY.machine.gpu || '-'} · RAM: ${ramStr}<br><strong>Models:</strong> ${SUMMARY.models} · <strong>Total gen time:</strong> ${(SUMMARY.total_generation_time_seconds||0).toFixed(2)} s · <strong>Avg gen time:</strong> ${SUMMARY.avg_generation_time_seconds?SUMMARY.avg_generation_time_seconds.toFixed(2):'-'} s</div>`;
   }
   render();
+  drawCharts();
 });
+
+function drawCharts(){
+  try{ drawScatterTPSvsGPU(); }catch(e){ console.warn('scatter failed', e); }
+  try{ drawBarsTimes(); }catch(e){ console.warn('bars failed', e); }
+}
+
+function drawScatterTPSvsGPU(){
+  const canvas = document.getElementById('chart_tps_gpu');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const data = DATA.filter(d=> num(d.tokens_per_second)!=null && num(d.gpu_w_avg)!=null);
+  const pad = 40; const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if(data.length===0){ ctx.fillText('No data for TPS vs GPU (avg W)', 10, 20); return; }
+  const xs = data.map(d=>num(d.gpu_w_avg));
+  const ys = data.map(d=>num(d.tokens_per_second));
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = 0, yMax = Math.max(...ys)*1.1;
+  const xScale = v => pad + (W-2*pad) * ((v - xMin) / (xMax - xMin || 1));
+  const yScale = v => H - pad - (H-2*pad) * ((v - yMin) / (yMax - yMin || 1));
+  // axes
+  ctx.strokeStyle = '#ccc';
+  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '12px system-ui';
+  ctx.fillText('GPU avg W', W/2 - 30, H - 10);
+  ctx.save(); ctx.translate(12, H/2); ctx.rotate(-Math.PI/2); ctx.fillText('Tokens/sec', 0, 0); ctx.restore();
+  // points
+  for(const d of data){
+    const x = xScale(num(d.gpu_w_avg));
+    const y = yScale(num(d.tokens_per_second));
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+  }
+  // labels (truncated)
+  ctx.fillStyle = '#555';
+  for(const d of data){
+    const x = xScale(num(d.gpu_w_avg));
+    const y = yScale(num(d.tokens_per_second));
+    const label = String(d.model).slice(0, 18);
+    ctx.fillText(label, x+6, y-6);
+  }
+}
+
+function drawBarsTimes(){
+  const canvas = document.getElementById('chart_times');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const data = DATA.filter(d=> num(d.generation_time_seconds)!=null).slice().sort((a,b)=>num(b.generation_time_seconds)-num(a.generation_time_seconds)).slice(0,20);
+  const pad = 60; const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if(data.length===0){ ctx.fillText('No generation time data', 10, 20); return; }
+  const xs = data.map(d=>num(d.generation_time_seconds));
+  const xMax = Math.max(...xs) * 1.1; const xMin = 0;
+  const barH = (H-2*pad) / data.length;
+  const xScale = v => pad + (W-2*pad) * ((v - xMin) / (xMax - xMin || 1));
+  // axes
+  ctx.strokeStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '12px system-ui'; ctx.fillText('Generation time (s)', W/2 - 50, H - 10);
+  // bars
+  data.forEach((d,i)=>{
+    const y = pad + i*barH + 2;
+    const w = xScale(num(d.generation_time_seconds)) - pad;
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(pad, y, w, barH-4);
+    ctx.fillStyle = '#111';
+    const label = `${String(d.model).slice(0,18)}  ${num(d.generation_time_seconds).toFixed(1)}s`;
+    ctx.fillText(label, pad+4, y + barH/2 + 4);
+  });
+}
 """
 
     # Compute file URLs
@@ -325,6 +396,7 @@ window.addEventListener('DOMContentLoaded',()=>{
         r["html_url"] = to_file_url(Path(r["html_path"])) if r.get("html_path") else None
         r["log_url"] = to_file_url(Path(r["log_path"])) if r.get("log_path") else None
         r["json_url"] = to_file_url(Path(r["raw_json_path"]))
+        r["text_url"] = to_file_url(Path(r["raw_text_path"])) if r.get("raw_text_path") else None
 
     # Build HTML doc
     data_json = json.dumps(records)
@@ -378,6 +450,16 @@ window.addEventListener('DOMContentLoaded',()=>{
     </thead>
     <tbody></tbody>
   </table>
+
+  <h2>Charts</h2>
+  <div class="small muted">Quick visualizations (auto from data below)</div>
+  <div style="max-width:100%;">
+    <canvas id="chart_tps_gpu" width="900" height="360" style="width:100%;max-width:100%;"></canvas>
+  </div>
+  <div style="height:8px"></div>
+  <div style="max-width:100%;">
+    <canvas id="chart_times" width="900" height="480" style="width:100%;max-width:100%;"></canvas>
+  </div>
 
   <script>
   {js.replace('REPLACEME_DATA', data_json).replace('REPLACEME_SUMMARY', summary_json)}
