@@ -162,6 +162,7 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
                 "temperature": prompt.get("temperature"),
                 "top_p": prompt.get("top_p"),
                 "max_tokens": prompt.get("max_tokens"),
+                "num_ctx": prompt.get("num_ctx"),
                 "gpu_setting": prompt.get("gpu_setting"),
             },
         }

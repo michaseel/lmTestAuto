@@ -16,7 +16,7 @@ OPENAI_BASE    = f"{API_BASE}/v1"
 REST_BASE      = f"{API_BASE}/api/v0"        # returns tokens/sec, TTFT, etc. (LM Studio 0.3.6+)
 # Save all runs under ./reports/<timestamped-folder>
 OUT_DIR        = Path("reports") / f"lmstudio-bench-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-PROMPT         = """Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks).
+PROMPT         = """Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).
 
 Requirements:
 - Columns: Backlog, In Progress, Review, Done.
@@ -36,12 +36,14 @@ Requirements:
 As answer return the plain HTML of the working application (script and styles included)
 """
 MAX_TOKENS     = -1                 # set to None to omit and use server default
-TEMP           = None               # None = use model/server default
-TOP_P          = None               # None = use model/server default
+TEMP           = .6               # None = use model/server default
+TOP_P          = .95               # None = use model/server default
+NUM_CTX        = 16384              # context length in tokens; set None to omit
+REASONING_EFFORT = 'medium'            # 'low' | 'medium' | 'high' (None = omit)
 GPU_SETTING    = "max"                       # lms load --gpu max
 USE_ASITOP_CSV = False                       # set True if you installed asitop-csv-logger and want to use it
 POWERMETRICS_INTERVAL_MS = 1000              # sample every 1s
-GEN_TIMEOUT_SECONDS = 200                    # interrupt generation after ~3m20s
+GEN_TIMEOUT_SECONDS = 300                    # interrupt generation after ~3m20s
 GEN_TIMER_INTERVAL_SECONDS = 2               # print timer update every 2s
 # ---------------------------
 
@@ -318,18 +320,21 @@ def snapshot_memory():
     return {"system_used_bytes": sys_used, "lmstudio_rss_bytes": rss_sum}
 
 def extract_html(text):
+    # Strip chain-of-thought blocks like <think> ... </think>
+    # Do not extract HTML from inside these reasoning blocks
+    sanitized = re.sub(r"(?is)<think[\s\S]*?</think>", "", text)
     # Prefer explicit HTML tags
-    m = re.search(r"(<html[\s\S]*?</html>)", text, re.I)
+    m = re.search(r"(<html[\s\S]*?</html>)", sanitized, re.I)
     if m:
         return m.group(1)
     # Try fenced code blocks ```html ... ```
-    m = re.search(r"```(?:html)?\s*([\s\S]*?)```", text, re.I)
+    m = re.search(r"```(?:html)?\s*([\s\S]*?)```", sanitized, re.I)
     if m:
         block = m.group(1).strip()
         if "<html" in block.lower():
             return block
-    # Fallback: wrap content
-    return f"<!doctype html><html><head><meta charset='utf-8'><title>Output</title></head><body><pre>{json.dumps(text)[:20000]}</pre></body></html>"
+    # Fallback: wrap content (also using sanitized text)
+    return f"<!doctype html><html><head><meta charset='utf-8'><title>Output</title></head><body><pre>{json.dumps(sanitized)[:20000]}</pre></body></html>"
 
 def chat_once(model_id, timeout_s=GEN_TIMEOUT_SECONDS):
     payload = {
@@ -346,6 +351,12 @@ def chat_once(model_id, timeout_s=GEN_TIMEOUT_SECONDS):
         payload["top_p"] = TOP_P
     if MAX_TOKENS is not None:
         payload["max_tokens"] = MAX_TOKENS
+    if REASONING_EFFORT is not None:
+        # Add both forms for compatibility with different OpenAI-compatible servers
+        payload["reasoning"] = {"effort": REASONING_EFFORT}
+        payload["reasoning_effort"] = REASONING_EFFORT
+    if NUM_CTX is not None:
+        payload["num_ctx"] = NUM_CTX
     # Prefer REST API for rich stats; only fallback to OpenAI API if REST endpoint is unavailable
     try:
         r = requests.post(f"{REST_BASE}/chat/completions", json=payload, timeout=(5, timeout_s))
@@ -531,8 +542,10 @@ def main():
                 "temperature": TEMP,
                 "top_p": TOP_P,
                 "max_tokens": MAX_TOKENS,
+                "num_ctx": NUM_CTX,
                 "text": PROMPT,
                 "gpu_setting": GPU_SETTING,
+                "reasoning_effort": REASONING_EFFORT,
             },
             "load_key_used": used_load_key if load_time_s is not None else None,
             "errors": {

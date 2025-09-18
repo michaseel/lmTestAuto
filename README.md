@@ -68,6 +68,12 @@ The report includes:
 
 After a run finishes, a consolidated report is also saved automatically to `<run-folder>/index.html` under the `reports/` directory.
 
+**Documentation**
+- docs/Overview.md — high‑level description and architecture.
+- docs/Benchmarking.md — benchmark flow, configuration, timeouts, memory/power details, chain‑of‑thought handling.
+- docs/Reporting.md — report structure, columns, charts, and standalone usage.
+- CHANGELOG.md — notable changes.
+
 **Troubleshooting**
 - `Missing 'lms' CLI`: In LM Studio, enable CLI in Settings, or add the CLI to PATH.
 - `Server didn’t come up`: Open LM Studio and enable Local Server (accept EULA). Ensure nothing else is bound to port 1234, or set `LMSTUDIO_API_BASE` env var.
