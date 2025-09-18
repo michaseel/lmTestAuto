@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, re, sys, json, time, signal, shutil, threading, subprocess
+import os, re, sys, json, time, signal, shutil, threading, subprocess, hashlib
 from datetime import datetime
 from pathlib import Path
 
@@ -15,7 +15,7 @@ API_BASE       = os.environ.get("LMSTUDIO_API_BASE", "http://127.0.0.1:1234")
 OPENAI_BASE    = f"{API_BASE}/v1"
 REST_BASE      = f"{API_BASE}/api/v0"        # returns tokens/sec, TTFT, etc. (LM Studio 0.3.6+)
 # Save all runs under ./reports/<timestamped-folder>
-OUT_DIR        = Path("reports") / f"lmstudio-bench-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+# OUT_DIR        = Path("reports") / f"lmstudio-bench-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 PROMPT         = """Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).
 
 Requirements:
@@ -47,6 +47,13 @@ GEN_TIMEOUT_SECONDS = 300                    # interrupt generation after ~3m20s
 GEN_TIMER_INTERVAL_SECONDS = 2               # print timer update every 2s
 # ---------------------------
 
+def get_out_dir():
+    # Create a hash of the settings
+    settings_str = f"{PROMPT}{MAX_TOKENS}{TEMP}{TOP_P}{NUM_CTX}{REASONING_EFFORT}{GPU_SETTING}"
+    settings_hash = hashlib.sha256(settings_str.encode('utf-8')).hexdigest()[:10]
+    return Path("reports") / f"lmstudio-bench-{settings_hash}"
+
+OUT_DIR = get_out_dir()
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def run(cmd, check=True, capture_output=True, text=True):
@@ -396,6 +403,16 @@ def main():
         model_api_id = entry["api_id"]
         model_cli_key = entry["cli_key"]
         print(f"\n=== Benchmarking {model_api_id} (load: {model_cli_key}) ===", flush=True)
+        
+        # Make safe filenames (model ids may contain slashes or spaces)
+        safe_model = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(model_api_id))[:200]
+        json_path = OUT_DIR / f"{safe_model}.json"
+        
+        # if there are already model run data for the current model in that folder: skip the benchmark and move to the next model
+        if json_path.exists():
+            print(f"Skipping {model_api_id} as results already exist.")
+            continue
+
         unload_all()
 
         # Memory baseline
