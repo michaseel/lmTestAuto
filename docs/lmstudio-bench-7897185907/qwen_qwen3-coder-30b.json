@@ -1,0 +1,103 @@
+{
+  "model": "qwen/qwen3-coder-30b",
+  "timestamp": "2025-09-18T10:44:26.204431",
+  "load_time_seconds": 5.3528220420121215,
+  "generation_time_seconds": 51.01115670800209,
+  "rest_stats": {
+    "tokens_per_second": 94.44997510401473,
+    "time_to_first_token": 0.297,
+    "generation_time": 50.673,
+    "stop_reason": "eosFound"
+  },
+  "usage": {
+    "prompt_tokens": 197,
+    "completion_tokens": 4786,
+    "total_tokens": 4983
+  },
+  "model_info": {
+    "arch": "qwen3_moe",
+    "quant": "4bit",
+    "format": "safetensors",
+    "context_length": 32340
+  },
+  "runtime": {
+    "name": "mlx-llm-mac-arm64-apple-metal-advsimd",
+    "version": "0.27.0",
+    "supported_formats": [
+      "safetensors"
+    ]
+  },
+  "power": {
+    "cpu_watts": {
+      "avg": 8.8302,
+      "max": 12.666,
+      "min": 6.034,
+      "samples": 50
+    },
+    "gpu_watts": {
+      "avg": 23.174319999999998,
+      "max": 28.162,
+      "min": 4.527,
+      "samples": 100
+    },
+    "ane_watts": {
+      "avg": 0.0,
+      "max": 0.0,
+      "min": 0.0,
+      "samples": 50
+    },
+    "samplers": "cpu_power,gpu_power,ane_power"
+  },
+  "memory": {
+    "baseline": {
+      "system_used_bytes": 42757160960,
+      "lmstudio_rss_bytes": 1238056960
+    },
+    "after_load": {
+      "system_used_bytes": 60354658304,
+      "lmstudio_rss_bytes": 19059458048
+    },
+    "after_generation": {
+      "system_used_bytes": 61448519680,
+      "lmstudio_rss_bytes": 19091865600
+    },
+    "delta_since_baseline_after_load": {
+      "system_used_bytes": 17597497344,
+      "lmstudio_rss_bytes": 17821401088
+    },
+    "delta_since_baseline_after_generation": {
+      "system_used_bytes": 18691358720,
+      "lmstudio_rss_bytes": 17853808640
+    },
+    "delta_since_load_after_generation": {
+      "system_used_bytes": 1093861376,
+      "lmstudio_rss_bytes": 32407552
+    },
+    "hwm_during_generation": {
+      "system_used_hwm_bytes": 61457367040,
+      "lmstudio_rss_hwm_bytes": 19092766720
+    }
+  },
+  "derived": {
+    "tokens_per_second_fallback": 93.82261271580268
+  },
+  "files": {
+    "html": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b.html",
+    "raw_text": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b.txt",
+    "powermetrics_log": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b_powermetrics.log"
+  },
+  "prompt": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_tokens": -1,
+    "num_ctx": 16384,
+    "text": "Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).\n\nRequirements:\n- Columns: Backlog, In Progress, Review, Done.\n- Cards must be:\n  - draggable across columns,\n  - editable in place,\n  - persisted in localStorage (state survives reloads) - please use your own namespace,\n  - deletable with a confirmation prompt.\n- Each column provides an \u201cAdd card\u201d action.\n- Style with Tailwind via CDN.\n- Add subtle CSS transitions and trigger a confetti animation when a card moves to \u201cDone\u201d.\n- Thoroughly comment the code.\n- dont use window.alert or window.prompt to add/edit/delete cards\n- if there are no cards yet, create some dummy cards\n- modern and vibrant design\n\nAs answer return the plain HTML of the working application (script and styles included)\n",
+    "gpu_setting": "max",
+    "reasoning_effort": "medium"
+  },
+  "load_key_used": "qwen/qwen3-coder-30b",
+  "errors": {
+    "load": null,
+    "generation": null
+  }
+}

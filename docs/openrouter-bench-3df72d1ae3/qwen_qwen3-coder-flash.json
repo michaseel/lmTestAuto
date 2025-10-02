@@ -1,0 +1,43 @@
+{
+  "model": "qwen/qwen3-coder-flash",
+  "timestamp": "2025-10-01T13:30:09.881643",
+  "generation_time_seconds": 46.087875041004736,
+  "cost": 0.0078096,
+  "usage": {
+    "prompt_tokens": 197,
+    "completion_tokens": 5167,
+    "total_tokens": 5364,
+    "cost": 0.0078096,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": null,
+      "upstream_inference_prompt_cost": 5.91e-05,
+      "upstream_inference_completions_cost": 0.0077505
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0
+    }
+  },
+  "model_info": {},
+  "derived": {
+    "tokens_per_second": 112.11191653776358
+  },
+  "files": {
+    "html": "/Users/mseel/dev/lmTestAuto/reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-flash.html",
+    "raw_text": "/Users/mseel/dev/lmTestAuto/reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-flash.txt"
+  },
+  "prompt": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_tokens": -1,
+    "text": "Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).\n\nRequirements:\n- Columns: Backlog, In Progress, Review, Done.\n- Cards must be:\n  - draggable across columns,\n  - editable in place,\n  - persisted in localStorage (state survives reloads) - please use your own namespace,\n  - deletable with a confirmation prompt.\n- Each column provides an \u201cAdd card\u201d action.\n- Style with Tailwind via CDN.\n- Add subtle CSS transitions and trigger a confetti animation when a card moves to \u201cDone\u201d.\n- Thoroughly comment the code.\n- dont use window.alert or window.prompt to add/edit/delete cards\n- if there are no cards yet, create some dummy cards\n- modern and vibrant design\n\nAs answer return the plain HTML of the working application (script and styles included)\n"
+  },
+  "errors": {
+    "generation": null
+  }
+}

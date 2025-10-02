@@ -1,0 +1,600 @@
+```html
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vanilla JS Kanban Board</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Subtle transitions for cards */
+    .card {
+      transition: box-shadow 0.3s ease, background-color 0.3s ease, transform 0.2s ease;
+    }
+    .card:focus-within {
+      outline: none;
+      box-shadow: 0 0 0 3px #60a5fa; /* Tailwind blue-400 */
+      background-color: #e0f2fe; /* Tailwind sky-100 */
+    }
+    /* Dragging style */
+    .dragging {
+      opacity: 0.6;
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 50;
+    }
+    /* Dropzone highlight */
+    .dropzone-hover {
+      background-color: #dbeafe; /* Tailwind blue-100 */
+      border-color: #3b82f6; /* Tailwind blue-500 */
+    }
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #a5b4fc; /* Tailwind indigo-300 */
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background-color: #f3f4f6; /* Tailwind gray-100 */
+    }
+    /* Confetti canvas full screen */
+    #confetti-canvas {
+      position: fixed;
+      pointer-events: none;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen flex flex-col">
+
+  <header class="p-6 text-center">
+    <h1 class="text-4xl font-extrabold text-indigo-700 drop-shadow-md select-none">Kanban Board</h1>
+    <p class="mt-2 text-indigo-500">Drag, edit, add, delete cards &amp; persist your workflow!</p>
+  </header>
+
+  <main class="flex-grow px-4 sm:px-8 pb-12 max-w-7xl mx-auto flex flex-col sm:flex-row gap-6 overflow-x-auto scrollbar-thin scrollbar-thumb-indigo-300 scrollbar-track-indigo-50">
+    <!-- Columns will be generated here -->
+  </main>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Modal Container -->
+  <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+    <!-- Modal content inserted dynamically -->
+  </div>
+
+  <script>
+  (() => {
+    // Namespace for localStorage
+    const STORAGE_KEY = 'kanban-board-v1';
+
+    // Columns definition
+    const COLUMNS = [
+      { id: 'backlog', title: 'Backlog', color: 'bg-indigo-400' },
+      { id: 'in-progress', title: 'In Progress', color: 'bg-yellow-400' },
+      { id: 'review', title: 'Review', color: 'bg-pink-400' },
+      { id: 'done', title: 'Done', color: 'bg-green-400' },
+    ];
+
+    // Dummy cards if none in storage
+    const DUMMY_CARDS = [
+      { id: 'c1', content: 'Set up project repo', column: 'backlog' },
+      { id: 'c2', content: 'Design wireframes', column: 'backlog' },
+      { id: 'c3', content: 'Implement drag & drop', column: 'in-progress' },
+      { id: 'c4', content: 'Write unit tests', column: 'review' },
+      { id: 'c5', content: 'Deploy to production', column: 'done' },
+    ];
+
+    // State of cards: Array of {id, content, column}
+    let cards = [];
+
+    // DOM references
+    const mainEl = document.querySelector('main');
+    const modalContainer = document.getElementById('modal-container');
+    const confettiCanvas = document.getElementById('confetti-canvas');
+    const ctx = confettiCanvas.getContext('2d');
+
+    // Drag state
+    let draggedCardId = null;
+
+    // Utility: generate unique id
+    function generateId() {
+      return 'id-' + Math.random().toString(36).slice(2, 10);
+    }
+
+    // Load cards from localStorage or use dummy
+    function loadCards() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          cards = JSON.parse(stored);
+        } else {
+          cards = DUMMY_CARDS.slice();
+          saveCards();
+        }
+      } catch {
+        cards = DUMMY_CARDS.slice();
+        saveCards();
+      }
+    }
+
+    // Save cards to localStorage
+    function saveCards() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    }
+
+    // Create a card element
+    function createCardElement(card) {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'card bg-white rounded-md p-3 shadow-md cursor-grab select-none break-words min-h-[48px] max-w-full focus-within:ring-2 focus-within:ring-indigo-400';
+      cardEl.setAttribute('draggable', 'true');
+      cardEl.setAttribute('tabindex', '0');
+      cardEl.dataset.id = card.id;
+      cardEl.dataset.column = card.column;
+
+      // Content element (contenteditable)
+      const contentEl = document.createElement('div');
+      contentEl.className = 'editable text-gray-800 text-sm leading-snug outline-none';
+      contentEl.contentEditable = 'true';
+      contentEl.spellcheck = false;
+      contentEl.innerText = card.content;
+
+      // Prevent new lines on Enter, save on blur or Enter
+      contentEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          contentEl.blur();
+        }
+      });
+
+      // Save content on blur
+      contentEl.addEventListener('blur', () => {
+        const newContent = contentEl.innerText.trim();
+        if (newContent.length === 0) {
+          // If emptied, revert to old content
+          contentEl.innerText = card.content;
+        } else if (newContent !== card.content) {
+          card.content = newContent;
+          saveCards();
+        }
+      });
+
+      cardEl.appendChild(contentEl);
+
+      // Delete button (top-right corner)
+      const delBtn = document.createElement('button');
+      delBtn.setAttribute('aria-label', 'Delete card');
+      delBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 hover:text-red-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      `;
+      delBtn.className = 'absolute top-1 right-1 p-1 rounded hover:bg-red-100 transition-colors';
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Show custom confirmation modal to delete
+        showConfirmModal(
+          `Delete this card?`,
+          () => {
+            // Confirm deletion
+            deleteCard(card.id);
+          }
+        );
+      });
+      // Relative position container for delete button
+      const container = document.createElement('div');
+      container.className = 'relative';
+      container.appendChild(cardEl);
+      container.appendChild(delBtn);
+
+      // Drag event listeners for card
+      cardEl.addEventListener('dragstart', (e) => {
+        draggedCardId = card.id;
+        e.dataTransfer.effectAllowed = 'move';
+        // Add dragging class
+        container.classList.add('dragging');
+        // Firefox requires setData to enable drag
+        e.dataTransfer.setData('text/plain', card.id);
+        // For smooth dragging ghost image: clone node
+        const crt = cardEl.cloneNode(true);
+        crt.style.position = 'absolute';
+        crt.style.top = '-1000px';
+        crt.style.left = '-1000px';
+        crt.style.width = cardEl.offsetWidth + 'px';
+        crt.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)';
+        document.body.appendChild(crt);
+        e.dataTransfer.setDragImage(crt, 10, 10);
+        setTimeout(() => document.body.removeChild(crt), 0);
+      });
+      cardEl.addEventListener('dragend', () => {
+        draggedCardId = null;
+        container.classList.remove('dragging');
+        clearDropzoneHighlights();
+      });
+
+      return container;
+    }
+
+    // Delete card by id
+    function deleteCard(id) {
+      cards = cards.filter(c => c.id !== id);
+      saveCards();
+      renderBoard();
+    }
+
+    // Clear all dropzone highlights
+    function clearDropzoneHighlights() {
+      document.querySelectorAll('.dropzone-hover').forEach(el => {
+        el.classList.remove('dropzone-hover');
+      });
+    }
+
+    // Render the entire board
+    function renderBoard() {
+      mainEl.innerHTML = '';
+
+      COLUMNS.forEach(col => {
+        // Column container
+        const colEl = document.createElement('section');
+        colEl.className = 'flex flex-col bg-white rounded-xl shadow-lg p-4 w-full max-w-xs flex-shrink-0';
+
+        // Column header
+        const headerEl = document.createElement('header');
+        headerEl.className = `flex justify-between items-center mb-3`;
+        const titleEl = document.createElement('h2');
+        titleEl.innerText = col.title;
+        titleEl.className = `font-semibold text-lg text-gray-800 select-none`;
+
+        // Add card button
+        const addBtn = document.createElement('button');
+        addBtn.className = `text-sm font-medium px-3 py-1 rounded-lg ${col.color} text-white shadow hover:brightness-110 transition-all`;
+        addBtn.textContent = '+ Add card';
+        addBtn.addEventListener('click', () => {
+          showInputModal(
+            `Add new card to "${col.title}"`,
+            '',
+            (inputValue) => {
+              const newCard = {
+                id: generateId(),
+                content: inputValue,
+                column: col.id,
+              };
+              cards.push(newCard);
+              saveCards();
+              renderBoard();
+            }
+          );
+        });
+
+        headerEl.appendChild(titleEl);
+        headerEl.appendChild(addBtn);
+        colEl.appendChild(headerEl);
+
+        // Cards container (dropzone)
+        const cardsContainer = document.createElement('div');
+        cardsContainer.className = 'flex flex-col gap-3 overflow-y-auto max-h-[65vh] pr-1';
+
+        // Dragover & drop events for dropzone
+        cardsContainer.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          // Highlight dropzone
+          cardsContainer.classList.add('dropzone-hover');
+          e.dataTransfer.dropEffect = 'move';
+        });
+        cardsContainer.addEventListener('dragleave', (e) => {
+          cardsContainer.classList.remove('dropzone-hover');
+        });
+        cardsContainer.addEventListener('drop', (e) => {
+          e.preventDefault();
+          cardsContainer.classList.remove('dropzone-hover');
+          if (!draggedCardId) return;
+          const card = cards.find(c => c.id === draggedCardId);
+          if (!card) return;
+
+          // Only proceed if moving to a different column
+          if (card.column !== col.id) {
+            card.column = col.id;
+            saveCards();
+            renderBoard();
+            // If moved to 'done' column, trigger confetti
+            if (col.id === 'done') {
+              launchConfetti();
+            }
+          }
+        });
+
+        // Filter cards by column and append
+        cards
+          .filter(c => c.column === col.id)
+          .forEach(card => {
+            const cardEl = createCardElement(card);
+            cardsContainer.appendChild(cardEl);
+          });
+
+        colEl.appendChild(cardsContainer);
+        mainEl.appendChild(colEl);
+      });
+    }
+
+    // Modal helpers
+
+    // Show input modal for add/edit card
+    // title: string, defaultValue: string, onConfirm: callback(value)
+    function showInputModal(title, defaultValue, onConfirm) {
+      modalContainer.innerHTML = '';
+      modalContainer.classList.remove('hidden');
+
+      // Modal box
+      const modalBox = document.createElement('div');
+      modalBox.className = 'bg-white rounded-xl max-w-md w-full p-6 shadow-xl flex flex-col gap-4';
+
+      // Title
+      const titleEl = document.createElement('h3');
+      titleEl.className = 'text-xl font-semibold text-gray-800';
+      titleEl.innerText = title;
+
+      // Textarea input
+      const textarea = document.createElement('textarea');
+      textarea.className = 'w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none text-gray-700';
+      textarea.rows = 4;
+      textarea.value = defaultValue;
+      textarea.setAttribute('aria-label', title);
+      textarea.autofocus = true;
+
+      // Buttons container
+      const btns = document.createElement('div');
+      btns.className = 'flex justify-end gap-3';
+
+      // Cancel button
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'px-4 py-2 rounded-md font-medium text-gray-700 hover:bg-gray-100 transition';
+      cancelBtn.innerText = 'Cancel';
+      cancelBtn.addEventListener('click', closeModal);
+
+      // Confirm button
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'px-4 py-2 rounded-md font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed';
+      confirmBtn.innerText = 'Save';
+      confirmBtn.disabled = textarea.value.trim().length === 0;
+
+      // Enable confirm button only if textarea has content
+      textarea.addEventListener('input', () => {
+        confirmBtn.disabled = textarea.value.trim().length === 0;
+      });
+
+      confirmBtn.addEventListener('click', () => {
+        const val = textarea.value.trim();
+        if (val.length === 0) return;
+        onConfirm(val);
+        closeModal();
+      });
+
+      btns.appendChild(cancelBtn);
+      btns.appendChild(confirmBtn);
+
+      modalBox.appendChild(titleEl);
+      modalBox.appendChild(textarea);
+      modalBox.appendChild(btns);
+
+      modalContainer.appendChild(modalBox);
+
+      // Focus textarea after modal is shown
+      setTimeout(() => textarea.focus(), 50);
+
+      // Close modal on Escape key
+      function onKeyDown(e) {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+      }
+      document.addEventListener('keydown', onKeyDown, { once: true });
+
+      // Close modal function
+      function closeModal() {
+        modalContainer.classList.add('hidden');
+        modalContainer.innerHTML = '';
+        document.removeEventListener('keydown', onKeyDown);
+      }
+    }
+
+    // Show confirm modal with custom message and callbacks
+    // message: string, onConfirm: function
+    function showConfirmModal(message, onConfirm) {
+      modalContainer.innerHTML = '';
+      modalContainer.classList.remove('hidden');
+
+      const modalBox = document.createElement('div');
+      modalBox.className = 'bg-white rounded-xl max-w-sm w-full p-6 shadow-xl flex flex-col gap-6 text-center';
+
+      const msgEl = document.createElement('p');
+      msgEl.className = 'text-gray-800 text-lg';
+      msgEl.innerText = message;
+
+      const btns = document.createElement('div');
+      btns.className = 'flex justify-center gap-6';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'px-5 py-2 rounded-md font-medium text-gray-700 hover:bg-gray-100 transition';
+      cancelBtn.innerText = 'Cancel';
+      cancelBtn.addEventListener('click', closeModal);
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'px-5 py-2 rounded-md font-semibold text-white bg-red-600 hover:bg-red-700 transition';
+      confirmBtn.innerText = 'Delete';
+      confirmBtn.addEventListener('click', () => {
+        onConfirm();
+        closeModal();
+      });
+
+      btns.appendChild(cancelBtn);
+      btns.appendChild(confirmBtn);
+
+      modalBox.appendChild(msgEl);
+      modalBox.appendChild(btns);
+
+      modalContainer.appendChild(modalBox);
+
+      // Close modal on Escape key
+      function onKeyDown(e) {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+      }
+      document.addEventListener('keydown', onKeyDown, { once: true });
+
+      function closeModal() {
+        modalContainer.classList.add('hidden');
+        modalContainer.innerHTML = '';
+        document.removeEventListener('keydown', onKeyDown);
+      }
+    }
+
+    // Confetti animation adapted from canvas-confetti simple implementation
+    // But implemented here inline for no dependencies
+
+    // Confetti particle class
+    class ConfettiParticle {
+      constructor(x, y, ctx, colors) {
+        this.x = x;
+        this.y = y;
+        this.ctx = ctx;
+        this.colors = colors;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.size = Math.random() * 6 + 4;
+        this.rotation = Math.random() * 360;
+        this.speedX = (Math.random() - 0.5) * 6;
+        this.speedY = Math.random() * -7 - 3;
+        this.gravity = 0.3;
+        this.opacity = 1;
+        this.damping = 0.98;
+        this.tilt = Math.random() * 10 - 10;
+        this.tiltSpeed = Math.random() * 0.1 + 0.05;
+      }
+
+      update() {
+        this.speedY += this.gravity;
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.speedX *= this.damping;
+        this.opacity -= 0.015;
+        this.rotation += this.tiltSpeed;
+        this.tilt += this.tiltSpeed;
+      }
+
+      draw() {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation * Math.PI / 180);
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.opacity < 0 ? 0 : this.opacity;
+
+        // Draw rectangle with tilt
+        ctx.beginPath();
+        ctx.moveTo(0 + this.tilt, 0);
+        ctx.lineTo(this.size + this.tilt, 0);
+        ctx.lineTo(this.size - this.tilt, this.size);
+        ctx.lineTo(0 - this.tilt, this.size);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      isDead() {
+        return this.opacity <= 0;
+      }
+    }
+
+    // Confetti launcher
+    let confettiParticles = [];
+    let confettiAnimationId = null;
+
+    function launchConfetti() {
+      if (confettiAnimationId) return; // Prevent multiple simultaneous launches
+
+      const count = 150;
+      const colors = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
+
+      const cw = window.innerWidth;
+      const ch = window.innerHeight;
+
+      // Create particles at bottom center
+      for (let i = 0; i < count; i++) {
+        const x = cw / 2 + (Math.random() * 200 - 100);
+        const y = ch;
+        confettiParticles.push(new ConfettiParticle(x, y, ctx, colors));
+      }
+
+      confettiCanvas.width = cw;
+      confettiCanvas.height = ch;
+      confettiCanvas.style.display = 'block';
+
+      function animate() {
+        ctx.clearRect(0, 0, cw, ch);
+        confettiParticles.forEach(p => {
+          p.update();
+          p.draw();
+        });
+        confettiParticles = confettiParticles.filter(p => !p.isDead());
+
+        if (confettiParticles.length > 0) {
+          confettiAnimationId = requestAnimationFrame(animate);
+        } else {
+          confettiAnimationId = null;
+          confettiCanvas.style.display = 'none';
+        }
+      }
+
+      animate();
+    }
+
+    // Initialize app
+    function init() {
+      loadCards();
+      renderBoard();
+    }
+
+    // Run
+    init();
+
+    // Accessibility: trap focus inside modal when open
+    modalContainer.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        const focusableElements = modalContainer.querySelectorAll('button, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusableElements.length === 0) return;
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    });
+
+    // Prevent dropping outside columns
+    document.body.addEventListener('dragover', e => {
+      e.preventDefault();
+    });
+    document.body.addEventListener('drop', e => {
+      e.preventDefault();
+    });
+  })();
+  </script>
+
+</body>
+</html>
+```

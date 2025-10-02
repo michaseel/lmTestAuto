@@ -1,0 +1,24 @@
+{
+  "model": "deepseek/deepseek-v3.1",
+  "timestamp": "2025-10-01T13:28:05.400273",
+  "generation_time_seconds": null,
+  "cost": null,
+  "usage": {},
+  "model_info": {},
+  "derived": {
+    "tokens_per_second": null
+  },
+  "files": {
+    "html": null,
+    "raw_text": null
+  },
+  "prompt": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_tokens": -1,
+    "text": "Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).\n\nRequirements:\n- Columns: Backlog, In Progress, Review, Done.\n- Cards must be:\n  - draggable across columns,\n  - editable in place,\n  - persisted in localStorage (state survives reloads) - please use your own namespace,\n  - deletable with a confirmation prompt.\n- Each column provides an \u201cAdd card\u201d action.\n- Style with Tailwind via CDN.\n- Add subtle CSS transitions and trigger a confetti animation when a card moves to \u201cDone\u201d.\n- Thoroughly comment the code.\n- dont use window.alert or window.prompt to add/edit/delete cards\n- if there are no cards yet, create some dummy cards\n- modern and vibrant design\n\nAs answer return the plain HTML of the working application (script and styles included)\n"
+  },
+  "errors": {
+    "generation": "generation_failed: HTTPError: 400 Client Error: Bad Request for url: https://openrouter.ai/api/v1/chat/completions"
+  }
+}

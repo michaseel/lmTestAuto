@@ -1,0 +1,83 @@
+{
+  "model": "glm-4.5-air-mlx@6bit",
+  "timestamp": "2025-09-18T10:44:28.653990",
+  "load_time_seconds": null,
+  "generation_time_seconds": null,
+  "rest_stats": {},
+  "usage": {},
+  "model_info": {},
+  "runtime": {},
+  "power": {
+    "cpu_watts": {
+      "avg": null,
+      "max": null,
+      "min": null,
+      "samples": 0
+    },
+    "gpu_watts": {
+      "avg": null,
+      "max": null,
+      "min": null,
+      "samples": 0
+    },
+    "ane_watts": {
+      "avg": null,
+      "max": null,
+      "min": null,
+      "samples": 0
+    },
+    "samplers": "cpu_power,gpu_power,ane_power"
+  },
+  "memory": {
+    "baseline": {
+      "system_used_bytes": 42504798208,
+      "lmstudio_rss_bytes": 1240989696
+    },
+    "after_load": {
+      "system_used_bytes": 42593140736,
+      "lmstudio_rss_bytes": 1241350144
+    },
+    "after_generation": {
+      "system_used_bytes": 42718281728,
+      "lmstudio_rss_bytes": 1245773824
+    },
+    "delta_since_baseline_after_load": {
+      "system_used_bytes": 88342528,
+      "lmstudio_rss_bytes": 360448
+    },
+    "delta_since_baseline_after_generation": {
+      "system_used_bytes": 213483520,
+      "lmstudio_rss_bytes": 4784128
+    },
+    "delta_since_load_after_generation": {
+      "system_used_bytes": 125140992,
+      "lmstudio_rss_bytes": 4423680
+    },
+    "hwm_during_generation": {
+      "system_used_hwm_bytes": 42610786304,
+      "lmstudio_rss_hwm_bytes": 1242005504
+    }
+  },
+  "derived": {
+    "tokens_per_second_fallback": null
+  },
+  "files": {
+    "html": null,
+    "raw_text": null,
+    "powermetrics_log": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_6bit_powermetrics.log"
+  },
+  "prompt": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_tokens": -1,
+    "num_ctx": 16384,
+    "text": "Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).\n\nRequirements:\n- Columns: Backlog, In Progress, Review, Done.\n- Cards must be:\n  - draggable across columns,\n  - editable in place,\n  - persisted in localStorage (state survives reloads) - please use your own namespace,\n  - deletable with a confirmation prompt.\n- Each column provides an \u201cAdd card\u201d action.\n- Style with Tailwind via CDN.\n- Add subtle CSS transitions and trigger a confetti animation when a card moves to \u201cDone\u201d.\n- Thoroughly comment the code.\n- dont use window.alert or window.prompt to add/edit/delete cards\n- if there are no cards yet, create some dummy cards\n- modern and vibrant design\n\nAs answer return the plain HTML of the working application (script and styles included)\n",
+    "gpu_setting": "max",
+    "reasoning_effort": "medium"
+  },
+  "load_key_used": null,
+  "errors": {
+    "load": "load_failed: CalledProcessError: Command '['lms', 'load', 'lmstudio-community/GLM-4.5-AIR-MLX-6BIT', '--gpu', 'max', '-y']' returned non-zero exit status 1.",
+    "generation": null
+  }
+}

@@ -1,0 +1,483 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for transitions and confetti */
+        .card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+        .confetti {
+            position: fixed;
+            pointer-events: none;
+            opacity: 0;
+            animation: confetti-fall 1s forwards;
+            background: radial-gradient(circle, rgba(255, 204, 0, 1) 0%, rgba(255, 153, 0, 1) 50%, rgba(255, 102, 0, 1) 100%);
+            border-radius: 50%;
+        }
+        @keyframes confetti-fall {
+            0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh) rotate(360deg) scale(1.5);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen p-8 font-sans">
+
+    <h1 class="text-4xl font-bold text-center text-indigo-800 mb-12">Vibrant Kanban Board</h1>
+
+    <div id="kanban-board" class="flex flex-col md:flex-row gap-8 justify-around">
+        <!-- Columns will be rendered here by JavaScript -->
+    </div>
+
+    <!-- Confetti container -->
+    <div id="confetti-container"></div>
+
+    <script>
+        // --- Configuration ---
+        const STORAGE_NAMESPACE = 'vibrantKanbanBoard'; // Namespace for localStorage
+        const COLUMNS = ['Backlog', 'In Progress', 'Review', 'Done'];
+        const COLUMN_IDS = COLUMNS.map(col => col.toLowerCase().replace(/\s+/g, '-'));
+
+        // --- DOM Elements ---
+        const kanbanBoard = document.getElementById('kanban-board');
+        const confettiContainer = document.getElementById('confetti-container');
+
+        // --- State Management ---
+        let kanbanState = {
+            // Initialize with dummy data if localStorage is empty
+            cards: [],
+            columns: COLUMNS.reduce((acc, col) => {
+                acc[col.toLowerCase().replace(/\s+/g, '-')] = [];
+                return acc;
+            }, {})
+        };
+
+        // --- Local Storage Functions ---
+        function saveState() {
+            localStorage.setItem(STORAGE_NAMESPACE, JSON.stringify(kanbanState));
+        }
+
+        function loadState() {
+            const savedState = localStorage.getItem(STORAGE_NAMESPACE);
+            if (savedState) {
+                kanbanState = JSON.parse(savedState);
+            } else {
+                // Create dummy cards if no state is found
+                createDummyCards();
+                saveState(); // Save the dummy state
+            }
+            // Ensure all columns exist in the state, even if empty
+            COLUMNS.forEach(col => {
+                const colId = col.toLowerCase().replace(/\s+/g, '-');
+                if (!kanbanState.columns[colId]) {
+                    kanbanState.columns[colId] = [];
+                }
+            });
+        }
+
+        // --- Dummy Data Generation ---
+        function createDummyCards() {
+            kanbanState.cards = [
+                { id: Date.now() + 1, title: 'Design initial mockups', content: 'Create wireframes and high-fidelity mockups for the user interface.', column: 'backlog' },
+                { id: Date.now() + 2, title: 'Develop user authentication', content: 'Implement secure login and registration functionality.', column: 'in-progress' },
+                { id: Date.now() + 3, title: 'Integrate payment gateway', content: 'Connect with Stripe API for processing payments.', column: 'in-progress' },
+                { id: Date.now() + 4, title: 'Write API documentation', content: 'Document all available API endpoints and their usage.', column: 'review' },
+                { id: Date.now() + 5, title: 'Fix login bug #123', content: 'Users are unable to log in with valid credentials.', column: 'backlog' },
+                { id: Date.now() + 6, title: 'Deploy to staging environment', content: 'Push the latest build to the staging server for testing.', column: 'done' },
+                { id: Date.now() + 7, title: 'User feedback session', content: 'Gather feedback from beta testers on the new features.', column: 'review' },
+            ];
+
+            // Distribute dummy cards into columns
+            kanbanState.cards.forEach(card => {
+                const colId = card.column;
+                if (kanbanState.columns[colId]) {
+                    kanbanState.columns[colId].push(card.id);
+                } else {
+                    // If somehow the column doesn't exist, create it and add the card
+                    kanbanState.columns[colId] = [card.id];
+                }
+            });
+        }
+
+        // --- Rendering Functions ---
+        function renderKanbanBoard() {
+            kanbanBoard.innerHTML = ''; // Clear previous board
+
+            COLUMNS.forEach(columnName => {
+                const colId = columnName.toLowerCase().replace(/\s+/g, '-');
+                const columnElement = document.createElement('div');
+                columnElement.id = `column-${colId}`;
+                columnElement.className = `
+                    w-full md:w-1/4 bg-white rounded-lg shadow-lg p-4 flex flex-col
+                    ${colId === 'done' ? 'border-2 border-green-400' : ''}
+                    ${colId === 'in-progress' ? 'border-2 border-blue-400' : ''}
+                    ${colId === 'review' ? 'border-2 border-yellow-400' : ''}
+                    ${colId === 'backlog' ? 'border-2 border-gray-400' : ''}
+                `;
+
+                // Column Header
+                const header = document.createElement('div');
+                header.className = 'flex justify-between items-center mb-4';
+                const title = document.createElement('h2');
+                title.textContent = columnName;
+                title.className = 'text-xl font-semibold text-gray-700';
+                header.appendChild(title);
+
+                // Add Card Button
+                const addButton = document.createElement('button');
+                addButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 hover:text-indigo-600 transition duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 6h.01M6 12h.01M18 12h.01M4 6h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2z" />
+                    </svg>
+                `;
+                addButton.onclick = () => showAddCardForm(colId);
+                header.appendChild(addButton);
+                columnElement.appendChild(header);
+
+                // Card List Container
+                const cardList = document.createElement('div');
+                cardList.id = `card-list-${colId}`;
+                cardList.className = 'min-h-[200px] space-y-4 overflow-y-auto p-2';
+                cardList.dataset.columnId = colId; // Store column ID for drop events
+
+                // Populate cards in the column
+                kanbanState.columns[colId].forEach(cardId => {
+                    const card = kanbanState.cards.find(c => c.id === cardId);
+                    if (card) {
+                        cardList.appendChild(createCardElement(card));
+                    }
+                });
+
+                columnElement.appendChild(cardList);
+                kanbanBoard.appendChild(columnElement);
+            });
+
+            // Add drag-and-drop event listeners after rendering
+            addDragDropListeners();
+        }
+
+        function createCardElement(card) {
+            const cardElement = document.createElement('div');
+            cardElement.id = `card-${card.id}`;
+            cardElement.className = 'bg-white rounded-lg shadow-md p-4 cursor-grab card';
+            cardElement.draggable = true;
+            cardElement.dataset.cardId = card.id;
+
+            // Card Content
+            const titleElement = document.createElement('h3');
+            titleElement.textContent = card.title;
+            titleElement.className = 'text-lg font-semibold text-gray-800 mb-2 break-words';
+            titleElement.onclick = () => showEditCardForm(card, 'title');
+
+            const contentElement = document.createElement('p');
+            contentElement.textContent = card.content;
+            contentElement.className = 'text-gray-600 text-sm break-words';
+            contentElement.onclick = () => showEditCardForm(card, 'content');
+
+            // Actions Container
+            const actionsElement = document.createElement('div');
+            actionsElement.className = 'mt-4 flex justify-between items-center';
+
+            // Delete Button
+            const deleteButton = document.createElement('button');
+            deleteButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400 hover:text-red-600 transition duration-200" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 7a1 1 0 001 1v8a1 1 0 102 0V7a1 1 0 00-1-1H7a1 1 0 00-1 1zm3 1a1 1 0 100 2v6a1 1 0 100-2zm3 0a1 1 0 100 2v6a1 1 0 100-2z" clip-rule="evenodd" />
+                </svg>
+            `;
+            deleteButton.onclick = () => handleDeleteCard(card.id);
+            actionsElement.appendChild(deleteButton);
+
+            cardElement.appendChild(titleElement);
+            cardElement.appendChild(contentElement);
+            cardElement.appendChild(actionsElement);
+
+            return cardElement;
+        }
+
+        // --- Form Handling ---
+        function showAddCardForm(columnId) {
+            const modal = createModal(`
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Add New Card</h2>
+                <div class="mb-4">
+                    <label for="card-title" class="block text-sm font-medium text-gray-700 mb-2">Card Title</label>
+                    <input type="text" id="card-title" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter title">
+                </div>
+                <div class="mb-6">
+                    <label for="card-content" class="block text-sm font-medium text-gray-700 mb-2">Card Content</label>
+                    <textarea id="card-content" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter details"></textarea>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition duration-200" onclick="closeModal()">Cancel</button>
+                    <button class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-200" onclick="addCard('${columnId}')">Add Card</button>
+                </div>
+            `);
+            document.body.appendChild(modal);
+        }
+
+        function showEditCardForm(card, field) {
+            const modal = createModal(`
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Edit Card ${field === 'title' ? 'Title' : 'Content'}</h2>
+                <div class="mb-4">
+                    <label for="edit-card-title" class="block text-sm font-medium text-gray-700 mb-2">Card Title</label>
+                    <input type="text" id="edit-card-title" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" value="${card.title}">
+                </div>
+                <div class="mb-6">
+                    <label for="edit-card-content" class="block text-sm font-medium text-gray-700 mb-2">Card Content</label>
+                    <textarea id="edit-card-content" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">${card.content}</textarea>
+                </div>
+                <div class="flex justify-end gap-4">
+                    <button class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition duration-200" onclick="closeModal()">Cancel</button>
+                    <button class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition duration-200" onclick="updateCard(${card.id})">Save Changes</button>
+                </div>
+            `);
+            document.body.appendChild(modal);
+        }
+
+        function createModal(content) {
+            const modalOverlay = document.createElement('div');
+            modalOverlay.id = 'modal-overlay';
+            modalOverlay.className = `
+                fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-300 ease-in-out
+            `;
+
+            const modalContent = document.createElement('div');
+            modalContent.className = `
+                bg-white rounded-lg shadow-xl p-8 max-w-sm w-full transform transition-transform duration-300 ease-out
+            `;
+            modalContent.innerHTML = content;
+
+            modalOverlay.appendChild(modalContent);
+            return modalOverlay;
+        }
+
+        function closeModal() {
+            const modalOverlay = document.getElementById('modal-overlay');
+            if (modalOverlay) {
+                modalOverlay.remove();
+            }
+        }
+
+        // --- Card Actions ---
+        function addCard(columnId) {
+            const titleInput = document.getElementById('card-title');
+            const contentInput = document.getElementById('card-content');
+
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+
+            if (!title || !content) {
+                // Basic validation, could add more sophisticated feedback
+                alert('Please enter both a title and content for the card.');
+                return;
+            }
+
+            const newCard = {
+                id: Date.now(), // Simple unique ID
+                title: title,
+                content: content,
+                column: columnId
+            };
+
+            kanbanState.cards.push(newCard);
+            kanbanState.columns[columnId].push(newCard.id);
+            saveState();
+            closeModal();
+            renderKanbanBoard(); // Re-render to show the new card
+        }
+
+        function updateCard(cardId) {
+            const cardIndex = kanbanState.cards.findIndex(card => card.id === cardId);
+            if (cardIndex === -1) return;
+
+            const titleInput = document.getElementById('edit-card-title');
+            const contentInput = document.getElementById('edit-card-content');
+
+            const newTitle = titleInput.value.trim();
+            const newContent = contentInput.value.trim();
+
+            if (!newTitle || !newContent) {
+                alert('Please enter both a title and content for the card.');
+                return;
+            }
+
+            kanbanState.cards[cardIndex].title = newTitle;
+            kanbanState.cards[cardIndex].content = newContent;
+
+            saveState();
+            closeModal();
+            renderKanbanBoard();
+        }
+
+        function handleDeleteCard(cardId) {
+            // Confirmation using a more modern approach (e.g., a custom modal or a simple prompt if absolutely necessary, but avoiding window.prompt as per req)
+            // For this example, we'll use a simple confirmation that's less intrusive than a full modal
+            const confirmDelete = confirm('Are you sure you want to delete this card? This action cannot be undone.');
+
+            if (confirmDelete) {
+                // Remove from the cards array
+                kanbanState.cards = kanbanState.cards.filter(card => card.id !== cardId);
+
+                // Remove from the relevant column's ID list
+                for (const colId in kanbanState.columns) {
+                    kanbanState.columns[colId] = kanbanState.columns[colId].filter(id => id !== cardId);
+                }
+
+                saveState();
+                renderKanbanBoard(); // Re-render to remove the card
+            }
+        }
+
+        // --- Drag and Drop Logic ---
+        let draggedCardId = null;
+        let draggedElement = null;
+
+        function addDragDropListeners() {
+            const cards = document.querySelectorAll('.card');
+            const dropZones = document.querySelectorAll('[data-column-id]');
+
+            cards.forEach(card => {
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragend', handleDragEnd);
+            });
+
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('dragleave', handleDragLeave);
+                zone.addEventListener('drop', handleDrop);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedCardId = parseInt(e.target.dataset.cardId);
+            draggedElement = e.target;
+            draggedElement.classList.add('card-dragging');
+            // Set data to be transferred (though we use the ID directly)
+            e.dataTransfer.setData('text/plain', draggedCardId);
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('card-dragging');
+            draggedElement = null;
+            draggedCardId = null;
+            // Clean up any lingering visual cues
+            document.querySelectorAll('.drop-zone-highlight').forEach(el => el.classList.remove('drop-zone-highlight'));
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+            e.dataTransfer.dropEffect = 'move';
+
+            const targetColumnId = e.currentTarget.dataset.columnId;
+            const columnElement = document.getElementById(`column-${targetColumnId}`);
+
+            // Add visual highlight to the drop zone
+            if (columnElement && !columnElement.classList.contains('drop-zone-highlight')) {
+                columnElement.classList.add('drop-zone-highlight');
+                // Add subtle border change for better feedback
+                columnElement.style.borderColor = getComputedStyle(columnElement).getPropertyValue('--tw-border-opacity') === '1' ? '#a0aec0' : '#4299e1'; // Default or blue
+            }
+        }
+
+        function handleDragLeave(e) {
+            const targetColumnId = e.currentTarget.dataset.columnId;
+            const columnElement = document.getElementById(`column-${targetColumnId}`);
+            if (columnElement) {
+                columnElement.classList.remove('drop-zone-highlight');
+                // Reset border color
+                columnElement.style.borderColor = '';
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const targetColumnId = e.currentTarget.dataset.columnId;
+            const columnElement = document.getElementById(`column-${targetColumnId}`);
+
+            if (columnElement) {
+                columnElement.classList.remove('drop-zone-highlight');
+                columnElement.style.borderColor = '';
+            }
+
+            if (draggedCardId === null || !draggedElement) return;
+
+            const card = kanbanState.cards.find(c => c.id === draggedCardId);
+            const originalColumnId = card.column;
+
+            // If dropped in the same column, do nothing visually or state-wise
+            if (originalColumnId === targetColumnId) {
+                return;
+            }
+
+            // Update the card's column property
+            card.column = targetColumnId;
+
+            // Update the state's column ID lists
+            kanbanState.columns[originalColumnId] = kanbanState.columns[originalColumnId].filter(id => id !== draggedCardId);
+            kanbanState.columns[targetColumnId].push(draggedCardId);
+
+            saveState();
+
+            // Trigger confetti animation if moved to 'Done'
+            if (targetColumnId === 'done') {
+                triggerConfetti(e.clientX, e.clientY);
+            }
+
+            // Re-render the board to reflect the change
+            renderKanbanBoard();
+        }
+
+        // --- Confetti Animation ---
+        function triggerConfetti(x, y) {
+            const numConfetti = 50;
+            for (let i = 0; i < numConfetti; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                const size = Math.random() * 10 + 5; // Size between 5px and 15px
+                confetti.style.width = `${size}px`;
+                confetti.style.height = `${size}px`;
+                confetti.style.left = `${x}px`;
+                confetti.style.top = `${y}px`;
+                const angle = Math.random() * 360;
+                const distance = Math.random() * 100 + 50; // How far it travels
+                confetti.style.transform = `rotate(${angle}deg) translate(${Math.cos(angle * Math.PI / 180) * distance}px, ${Math.sin(angle * Math.PI / 180) * distance}px) scale(1)`;
+                confetti.style.animationDelay = `${Math.random() * 0.5}s`; // Stagger animation start
+
+                confettiContainer.appendChild(confetti);
+
+                // Remove confetti element after animation ends
+                confetti.addEventListener('animationend', () => {
+                    confetti.remove();
+                });
+            }
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderKanbanBoard();
+        });
+    </script>
+</body>
+</html>
+```
