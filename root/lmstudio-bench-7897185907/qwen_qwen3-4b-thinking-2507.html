@@ -1,0 +1,356 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            font-size: 2.2em;
+            color: #2c3e50;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .column {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        .column:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.15);
+        }
+        .column-header {
+            background: #3498db;
+            color: white;
+            padding: 12px 15px;
+            font-weight: 600;
+            font-size: 1.1em;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .cards {
+            padding: 15px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin: 5px 0;
+            cursor: grab;
+            transition: all 0.2s;
+            border: 1px solid #e0e0e0;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .card-content {
+            display: flex;
+            align-items: center;
+        }
+        .card-title {
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 0;
+        }
+        .card-duration {
+            background: #e8f4fc;
+            color: #3498db;
+            font-size: 0.8em;
+            padding: 3px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .add-card-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 1em;
+        }
+        .add-card-btn:hover {
+            background: #2980b9;
+        }
+        .card-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+        }
+        .card-action {
+            background: #e8f4fc;
+            color: #3498db;
+            font-size: 0.8em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .drop-zone {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .drop-zone:hover {
+            background: #e8f4fc;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: #3498db;
+            margin-right: 8px;
+        }
+        @media (max-width: 768px) {
+            .board {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 480px) {
+            .board {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Kanban Board</h1>
+        </div>
+        
+        <div class="board">
+            <div class="column" data-column="backlog">
+                <div class="column-header">Backlog</div>
+                <div class="cards" id="backlog">
+                    <div class="card" draggable="true" data-id="1">
+                        <div class="card-content">
+                            <div class="card-title">Research new features</div>
+                            <div class="card-duration">2 days</div>
+                        </div>
+                    </div>
+                    <div class="card" draggable="true" data-id="2">
+                        <div class="card-content">
+                            <div class="card-title">Design UI mockups</div>
+                            <div class="card-duration">3 days</div>
+                        </div>
+                    </div>
+                    <div class="card" draggable="true" data-id="3">
+                        <div class="card-content">
+                            <div class="card-title">Test API integrations</div>
+                            <div class="card-duration">1 day</div>
+                        </div>
+                    </div>
+                    <div class="drop-zone" data-drop="backlog">
+                        <span>Drag card here</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="column" data-column="in-progress">
+                <div class="column-header">In Progress</div>
+                <div class="cards" id="in-progress">
+                    <div class="card" draggable="true" data-id="4">
+                        <div class="card-content">
+                            <div class="card-title">Develop authentication system</div>
+                            <div class="card-duration">4 days</div>
+                        </div>
+                    </div>
+                    <div class="card" draggable="true" data-id="5">
+                        <div class="card-content">
+                            <div class="card-title">Implement payment processing</div>
+                            <div class="card-duration">2 days</div>
+                        </div>
+                    </div>
+                    <div class="drop-zone" data-drop="in-progress">
+                        <span>Drag card here</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="column" data-column="review">
+                <div class="column-header">Review</div>
+                <div class="cards" id="review">
+                    <div class="card" draggable="true" data-id="6">
+                        <div class="card-content">
+                            <div class="card-title">User testing</div>
+                            <div class="card-duration">1 day</div>
+                        </div>
+                    </div>
+                    <div class="card" draggable="true" data-id="7">
+                        <div class="card-content">
+                            <div class="card-title">Final quality checks</div>
+                            <div class="card-duration">3 days</div>
+                        </div>
+                    </div>
+                    <div class="drop-zone" data-drop="review">
+                        <span>Drag card here</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="column" data-column="done">
+                <div class="column-header">Done</div>
+                <div class="cards" id="done">
+                    <div class="card" draggable="true" data-id="8">
+                        <div class="card-content">
+                            <div class="card-title">Tested and deployed</div>
+                            <div class="card-duration">1 week</div>
+                        </div>
+                    </div>
+                    <div class="drop-zone" data-drop="done">
+                        <span>Drag card here</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="add-card-btn" id="addCardBtn">Add New Card</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const columns = {
+                backlog: document.querySelector('[data-column="backlog"]'),
+                'in-progress': document.querySelector('[data-column="in-progress"]'),
+                review: document.querySelector('[data-column="review"]'),
+                done: document.querySelector('[data-column="done"]')
+            };
+
+            // Add new card functionality
+            const addCardBtn = document.getElementById('addCardBtn');
+            addCardBtn.addEventListener('click', () => {
+                const newCard = document.createElement('div');
+                newCard.className = 'card';
+                newCard.draggable = true;
+                newCard.dataset.id = Date.now();
+                newCard.innerHTML = `
+                    <div class="card-content">
+                        <div class="card-title">New Card</div>
+                        <div class="card-duration">1 day</div>
+                    </div>
+                `;
+                document.querySelector('.cards').appendChild(newCard);
+                newCard.addEventListener('dragstart', handleDragStart);
+                newCard.addEventListener('dragover', handleDragOver);
+                newCard.addEventListener('drop', handleDrop);
+            });
+
+            // Drag and drop functionality
+            function handleDragStart(e) {
+                e.dataTransfer.setData('text/plain', e.target.dataset.id);
+                e.dataTransfer.effectAllowed = 'move';
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                const target = e.target.closest('[data-drop]');
+                const cardId = e.dataTransfer.getData('text/plain');
+                
+                if (target && target.dataset.drop) {
+                    const card = document.querySelector(`[data-id="${cardId}"]`);
+                    if (card) {
+                        target.closest('.cards').appendChild(card);
+                        card.classList.add('dragging');
+                        setTimeout(() => {
+                            card.classList.remove('dragging');
+                        }, 300);
+                    }
+                }
+            }
+
+            // Add event listeners to all cards
+            document.querySelectorAll('.card').forEach(card => {
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragover', handleDragOver);
+                card.addEventListener('drop', handleDrop);
+            });
+
+            // Handle drop zones
+            document.querySelectorAll('[data-drop]').forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.style.border = '2px dashed #3498db';
+                });
+                
+                zone.addEventListener('dragleave', () => {
+                    zone.style.border = '2px dashed #3498db';
+                });
+                
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.style.border = '2px dashed #3498db';
+                });
+            });
+
+            // Add card click functionality
+            document.querySelectorAll('.card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const id = card.dataset.id;
+                    const title = card.querySelector('.card-title').textContent;
+                    
+                    // Show card details
+                    alert(`Card "${title}" (ID: ${id}) selected`);
+                });
+            });
+
+            // Add delete functionality
+            document.querySelectorAll('.card').forEach(card => {
+                card.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    const id = card.dataset.id;
+                    if (confirm(`Delete card with ID ${id}?`)) {
+                        card.remove();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,471 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibrant Kanban Board</title>
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Canvas Confetti via CDN for the "Done" celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* Custom styles for a more polished look and feel */
+
+        /* Style for the scrollbar to match the dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b; /* bg-slate-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569; /* bg-slate-600 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* bg-slate-500 */
+        }
+
+        /* Class applied to a card being dragged */
+        .dragging {
+            opacity: 0.5;
+            transform: rotate(3deg) scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Class applied to a column when a card is dragged over it */
+        .drag-over {
+            background-color: rgba(30, 41, 59, 0.8); /* A slightly lighter shade of bg-slate-800 */
+            border: 2px dashed #4f46e5; /* indigo-600 */
+        }
+
+        /* Subtle transition for cards and columns */
+        .kanban-card, .kanban-column {
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .kanban-card {
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 font-sans text-white h-screen overflow-x-auto">
+
+    <main class="p-4 md:p-8 h-full">
+        <h1 class="text-3xl md:text-4xl font-bold text-center mb-8 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">Project Phoenix Kanban</h1>
+        
+        <!-- The main container for the Kanban board -->
+        <div id="kanban-board" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-[calc(100%-80px)]">
+            <!-- Columns will be dynamically generated here by the script -->
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- CONFIGURATION & STATE MANAGEMENT ---
+
+            /**
+             * Namespace for localStorage to prevent conflicts with other applications.
+             */
+            const KANBAN_NAMESPACE = 'vibrantKanban';
+
+            /**
+             * The column structure of the Kanban board.
+             */
+            const COLUMNS = {
+                backlog: "Backlog",
+                inProgress: "In Progress",
+                review: "Review",
+                done: "Done"
+            };
+            
+            /**
+             * Default dummy data to populate the board if localStorage is empty.
+             */
+            const getInitialData = () => ({
+                backlog: [
+                    { id: Date.now() + 1, text: "Design the user interface mockups" },
+                    { id: Date.now() + 2, text: "Set up the project repository on GitHub" },
+                ],
+                inProgress: [
+                    { id: Date.now() + 3, text: "Develop the authentication module" },
+                ],
+                review: [
+                    { id: Date.now() + 4, text: "Code review for the new API endpoints" },
+                ],
+                done: [
+                    { id: Date.now() + 5, text: "Finalize project requirements document" },
+                ]
+            });
+
+            /**
+             * Loads the board state from localStorage. If no state is found,
+             * it initializes with dummy data.
+             * @returns {object} The board state.
+             */
+            const loadState = () => {
+                const savedState = localStorage.getItem(KANBAN_NAMESPACE);
+                if (savedState) {
+                    return JSON.parse(savedState);
+                }
+                return getInitialData();
+            };
+
+            /**
+             * Saves the current board state to localStorage.
+             * @param {object} state - The current state of the board.
+             */
+            const saveState = (state) => {
+                localStorage.setItem(KANBAN_NAMESPACE, JSON.stringify(state));
+            };
+
+            // Initialize state
+            let state = loadState();
+
+
+            // --- DOM MANIPULATION & RENDERING ---
+
+            /**
+             * Renders the entire Kanban board from the state object.
+             * This function is the single source of truth for the UI.
+             */
+            const renderBoard = () => {
+                const board = document.getElementById('kanban-board');
+                board.innerHTML = ''; // Clear the board before re-rendering
+
+                Object.keys(COLUMNS).forEach(columnId => {
+                    const columnTitle = COLUMNS[columnId];
+                    const columnEl = createColumnElement(columnId, columnTitle);
+                    
+                    // Populate column with cards
+                    const cardsContainer = columnEl.querySelector('.cards-container');
+                    state[columnId].forEach(card => {
+                        const cardEl = createCardElement(card);
+                        cardsContainer.appendChild(cardEl);
+                    });
+
+                    board.appendChild(columnEl);
+                });
+
+                // Re-attach event listeners after rendering
+                initAddCardHandlers();
+                initDragAndDrop();
+            };
+
+            /**
+             * Creates a DOM element for a column.
+             * @param {string} id - The unique identifier for the column (e.g., 'backlog').
+             * @param {string} title - The display title for the column (e.g., 'Backlog').
+             * @returns {HTMLElement} The created column element.
+             */
+            const createColumnElement = (id, title) => {
+                const column = document.createElement('div');
+                column.className = 'kanban-column flex flex-col bg-slate-800 rounded-xl shadow-lg h-full';
+                column.dataset.columnId = id;
+
+                column.innerHTML = `
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-slate-300">${title}</h2>
+                        <span class="text-sm font-medium bg-slate-700 text-slate-400 rounded-full px-2 py-1">${state[id].length}</span>
+                    </div>
+                    <div class="cards-container flex-grow p-4 overflow-y-auto">
+                        <!-- Cards will be appended here -->
+                    </div>
+                    <div class="p-4 border-t border-slate-700">
+                        <button class="add-card-btn w-full flex items-center justify-center gap-2 text-slate-400 hover:text-white hover:bg-slate-700 p-2 rounded-lg transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                            Add card
+                        </button>
+                    </div>
+                `;
+                return column;
+            };
+
+            /**
+             * Creates a DOM element for a card.
+             * @param {object} card - The card object with id and text.
+             * @returns {HTMLElement} The created card element.
+             */
+            const createCardElement = (card) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'kanban-card bg-slate-700 p-3 rounded-lg mb-3 shadow-md cursor-grab active:cursor-grabbing';
+                cardEl.draggable = true;
+                cardEl.dataset.cardId = card.id;
+
+                cardEl.innerHTML = `
+                    <div class="card-content flex justify-between items-start">
+                        <p class="text-slate-200 break-words">${card.text}</p>
+                        <button class="delete-card-btn opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-500 transition-opacity duration-200 ml-2 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                `;
+
+                // Add group class for hover effect on delete button
+                cardEl.classList.add('group');
+
+                // Attach event listeners for editing and deleting
+                cardEl.querySelector('.card-content p').addEventListener('click', (e) => handleEditCard(e, card));
+                cardEl.querySelector('.delete-card-btn').addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent card edit from triggering
+                    handleDeleteCard(card.id);
+                });
+                
+                return cardEl;
+            };
+
+            // --- EVENT HANDLERS & LOGIC ---
+
+            /**
+             * Initializes drag and drop functionality for all cards and columns.
+             */
+            const initDragAndDrop = () => {
+                const cards = document.querySelectorAll('.kanban-card');
+                const columns = document.querySelectorAll('.cards-container');
+
+                cards.forEach(card => {
+                    card.addEventListener('dragstart', (e) => {
+                        e.target.classList.add('dragging');
+                        e.dataTransfer.setData('text/plain', e.target.dataset.cardId);
+                        e.dataTransfer.effectAllowed = 'move';
+                    });
+
+                    card.addEventListener('dragend', (e) => {
+                        e.target.classList.remove('dragging');
+                    });
+                });
+
+                columns.forEach(column => {
+                    column.addEventListener('dragover', (e) => {
+                        e.preventDefault(); // Necessary to allow dropping
+                        const columnEl = e.currentTarget.closest('.kanban-column');
+                        columnEl.classList.add('drag-over');
+                    });
+                    
+                    column.addEventListener('dragleave', (e) => {
+                        const columnEl = e.currentTarget.closest('.kanban-column');
+                        columnEl.classList.remove('drag-over');
+                    });
+
+                    column.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        const columnEl = e.currentTarget.closest('.kanban-column');
+                        columnEl.classList.remove('drag-over');
+
+                        const cardId = parseInt(e.dataTransfer.getData('text/plain'));
+                        const targetColumnId = columnEl.dataset.columnId;
+                        
+                        // Find original column and card
+                        let sourceColumnId;
+                        let cardToMove;
+
+                        for (const colId in state) {
+                            const foundCard = state[colId].find(c => c.id === cardId);
+                            if (foundCard) {
+                                sourceColumnId = colId;
+                                cardToMove = foundCard;
+                                break;
+                            }
+                        }
+
+                        // Move the card in the state object
+                        if (sourceColumnId && cardToMove && sourceColumnId !== targetColumnId) {
+                            // Remove from source
+                            state[sourceColumnId] = state[sourceColumnId].filter(c => c.id !== cardId);
+                            // Add to target
+                            state[targetColumnId].push(cardToMove);
+
+                            saveState(state);
+                            renderBoard();
+
+                            // Trigger confetti if moved to "Done"
+                            if (targetColumnId === 'done') {
+                                triggerConfetti();
+                            }
+                        }
+                    });
+                });
+            };
+
+            /**
+             * Initializes handlers for the "Add card" buttons in each column.
+             */
+            const initAddCardHandlers = () => {
+                document.querySelectorAll('.add-card-btn').forEach(button => {
+                    // Use a unique property to prevent multiple listeners
+                    if (!button.hasAddCardListener) {
+                        button.addEventListener('click', (e) => {
+                            const columnEl = e.target.closest('.kanban-column');
+                            const columnId = columnEl.dataset.columnId;
+                            showAddCardForm(columnEl, columnId);
+                        });
+                        button.hasAddCardListener = true;
+                    }
+                });
+            };
+
+            /**
+             * Displays an inline form to add a new card.
+             * @param {HTMLElement} columnEl - The column element where the form should appear.
+             * @param {string} columnId - The ID of the column.
+             */
+            const showAddCardForm = (columnEl, columnId) => {
+                const addButton = columnEl.querySelector('.add-card-btn');
+                addButton.style.display = 'none'; // Hide the add button
+
+                const form = document.createElement('div');
+                form.className = 'add-card-form p-1';
+                form.innerHTML = `
+                    <textarea class="w-full p-2 rounded-md bg-slate-600 text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Enter card text..."></textarea>
+                    <div class="mt-2 flex items-center gap-2">
+                        <button class="save-btn flex-grow bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-200">Add</button>
+                        <button class="cancel-btn bg-transparent hover:bg-slate-700 text-slate-400 py-2 px-4 rounded-md transition-colors duration-200">Cancel</button>
+                    </div>
+                `;
+
+                columnEl.querySelector('.cards-container').appendChild(form);
+                const textarea = form.querySelector('textarea');
+                textarea.focus();
+
+                const cleanup = () => {
+                    form.remove();
+                    addButton.style.display = 'flex';
+                };
+
+                form.querySelector('.save-btn').onclick = () => {
+                    const text = textarea.value.trim();
+                    if (text) {
+                        const newCard = { id: Date.now(), text: text };
+                        state[columnId].push(newCard);
+                        saveState(state);
+                        renderBoard(); // Rerender to show the new card correctly
+                    } else {
+                        cleanup();
+                    }
+                };
+                
+                form.querySelector('.cancel-btn').onclick = cleanup;
+                textarea.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        form.querySelector('.save-btn').click();
+                    }
+                    if (e.key === 'Escape') {
+                        cleanup();
+                    }
+                });
+            };
+
+            /**
+             * Handles the logic for inline editing of a card's text.
+             * @param {Event} e - The click event on the card's text.
+             * @param {object} card - The card object being edited.
+             */
+            const handleEditCard = (e, card) => {
+                const p = e.target;
+                const cardEl = p.closest('.kanban-card');
+                
+                const input = document.createElement('textarea');
+                input.className = 'w-full p-0 m-0 bg-transparent text-slate-200 border-2 border-indigo-500 rounded-md focus:outline-none resize-none';
+                input.style.height = `${p.offsetHeight + 8}px`; // Match height
+                input.value = card.text;
+                
+                p.style.display = 'none';
+                cardEl.querySelector('.card-content').prepend(input);
+                input.focus();
+                input.select();
+
+                const saveChanges = () => {
+                    const newText = input.value.trim();
+                    if (newText && newText !== card.text) {
+                        card.text = newText;
+                        // Find the card in the state and update it
+                        for (const colId in state) {
+                            const cardIndex = state[colId].findIndex(c => c.id === card.id);
+                            if (cardIndex > -1) {
+                                state[colId][cardIndex].text = newText;
+                                break;
+                            }
+                        }
+                        saveState(state);
+                    }
+                    // Rerender to ensure clean state, could also just update the DOM element
+                    renderBoard();
+                };
+
+                input.addEventListener('blur', saveChanges);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        input.blur();
+                    }
+                    if (e.key === 'Escape') {
+                        input.value = card.text; // Revert changes
+                        input.blur();
+                    }
+                });
+            };
+
+            /**
+             * Handles card deletion with a custom confirmation step.
+             * @param {number} cardId - The ID of the card to delete.
+             */
+            const handleDeleteCard = (cardId) => {
+                const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
+                if (!cardEl) return;
+
+                // Replace card content with confirmation
+                const originalContent = cardEl.innerHTML;
+                cardEl.draggable = false;
+                cardEl.style.cursor = 'default';
+                cardEl.innerHTML = `
+                    <div class="text-center p-2">
+                        <p class="text-sm mb-3">Are you sure?</p>
+                        <div class="flex gap-2 justify-center">
+                            <button class="confirm-delete-btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-3 rounded">Delete</button>
+                            <button class="cancel-delete-btn bg-slate-600 hover:bg-slate-500 text-white text-xs font-bold py-1 px-3 rounded">Cancel</button>
+                        </div>
+                    </div>
+                `;
+
+                cardEl.querySelector('.confirm-delete-btn').onclick = () => {
+                    // Find and remove the card from the state
+                    for (const columnId in state) {
+                        state[columnId] = state[columnId].filter(c => c.id !== cardId);
+                    }
+                    saveState(state);
+                    renderBoard();
+                };
+
+                cardEl.querySelector('.cancel-delete-btn').onclick = () => {
+                    // Restore original content (or just re-render)
+                    renderBoard();
+                };
+            };
+            
+            /**
+             * Triggers a confetti animation.
+             */
+            const triggerConfetti = () => {
+                confetti({
+                    particleCount: 150,
+                    spread: 90,
+                    origin: { y: 0.6 },
+                    colors: ['#6366f1', '#818cf8', '#38bdf8', '#7dd3fc'] // Indigo and Sky colors
+                });
+            };
+
+
+            // --- INITIALIZATION ---
+            
+            renderBoard();
+
+        });
+    </script>
+
+</body>
+</html>

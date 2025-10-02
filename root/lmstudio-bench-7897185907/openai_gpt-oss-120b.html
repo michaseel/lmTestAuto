@@ -1,0 +1,409 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vanilla JS Kanban Board</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Canvas‑Confetti library for the celebration effect -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    /* Subtle transition for cards and columns */
+    .card {
+      @apply bg-white rounded shadow-md p-3 mb-2 cursor-move select-none;
+      transition: transform .15s ease, background-color .2s;
+    }
+    .card.dragging {
+      opacity: 0.6;
+      transform: scale(1.03);
+    }
+    .column {
+      @apply bg-gray-100 rounded p-4 flex flex-col h-full;
+      transition: background-color .3s;
+    }
+    .column.drag-over {
+      background-color:#e2e8f0; /* slightly darker */
+    }
+  </style>
+</head>
+
+<body class="bg-gray-200 min-h-screen flex items-start justify-center p-6">
+
+  <!-- Main board container -->
+  <div id="board" class="grid grid-cols-1 md:grid-cols-4 gap-4 w-full max-w-7xl">
+    <!-- Columns will be injected by JavaScript -->
+  </div>
+
+  <!-- Simple custom modal for delete confirmation -->
+  <div id="confirmModal"
+       class="fixed inset-0 bg-black/30 flex items-center justify-center hidden">
+    <div class="bg-white rounded p-6 shadow-lg w-80">
+      <p class="mb-4">Delete this card?</p>
+      <div class="flex justify-end space-x-2">
+        <button id="cancelBtn"
+                class="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+        <button id="confirmBtn"
+                class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+/* -------------------------------------------------------------
+   Kanban Board – vanilla JavaScript
+   ------------------------------------------------------------- */
+
+/**
+ * Namespace for localStorage.
+ * All board data is stored under this key as JSON string.
+ */
+const STORAGE_KEY = 'myKanbanBoard_v1';
+
+/**
+ * Column definitions.
+ * Order matters – it defines the visual order.
+ */
+const COLUMNS = [
+  { id: 'backlog',    title: 'Backlog' },
+  { id: 'inProgress',title: 'In Progress' },
+  { id: 'review',     title: 'Review' },
+  { id: 'done',       title: 'Done' }
+];
+
+/**
+ * In‑memory representation of the board.
+ * Structure:
+ * {
+ *   backlog: [{id, text}, …],
+ *   inProgress: [...],
+ *   review: [...],
+ *   done: [...]
+ * }
+ */
+let boardData = loadBoard();
+
+/**
+ * Load data from localStorage. If none exists, create dummy cards.
+ */
+function loadBoard() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) return JSON.parse(raw);
+
+  // Dummy starter cards
+  const demo = {
+    backlog: [
+      { id: genId(), text: 'Gather requirements' },
+      { id: genId(), text: 'Set up repo' }
+    ],
+    inProgress: [{ id: genId(), text: 'Design UI mockups' }],
+    review: [],
+    done: []
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(demo));
+  return demo;
+}
+
+/**
+ * Persist current boardData to localStorage.
+ */
+function saveBoard() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(boardData));
+}
+
+/**
+ * Helper – generate a short unique id.
+ */
+function genId() {
+  return 'c' + Math.random().toString(36).substr(2, 9);
+}
+
+/* -------------------------------------------------------------
+   Rendering
+   ------------------------------------------------------------- */
+
+/**
+ * Render the whole board (columns & cards).
+ */
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = ''; // clear
+
+  COLUMNS.forEach(col => {
+    // Column container
+    const colDiv = document.createElement('div');
+    colDiv.className = 'column';
+    colDiv.dataset.column = col.id;
+
+    // Header + Add button
+    const header = document.createElement('div');
+    header.className = 'flex justify-between items-center mb-3';
+    header.innerHTML = `
+      <h2 class="text-xl font-semibold">${col.title}</h2>
+      <button class="addBtn text-sm bg-blue-500 text-white rounded px-2 py-1 hover:bg-blue-600"
+              data-column="${col.id}">+ Add</button>`;
+    colDiv.appendChild(header);
+
+    // Card list container
+    const cardsContainer = document.createElement('div');
+    cardsContainer.className = 'flex-1 space-y-2';
+    cardsContainer.dataset.column = col.id;
+    colDiv.appendChild(cardsContainer);
+
+    // Render each card for this column
+    (boardData[col.id] || []).forEach(card => {
+      const cardEl = createCardElement(card);
+      cardsContainer.appendChild(cardEl);
+    });
+
+    board.appendChild(colDiv);
+  });
+}
+
+/**
+ * Create a DOM element representing a single card.
+ */
+function createCardElement(card) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.draggable = true;
+  el.dataset.id = card.id;
+
+  // Card content – editable via contentEditable
+  const content = document.createElement('div');
+  content.className = 'content break-words';
+  content.contentEditable = true;          // make it editable in place
+  content.innerText = card.text;
+  content.title = 'Click to edit';
+
+  // Save changes on blur (when user clicks away)
+  content.addEventListener('blur', () => {
+    const newText = content.innerText.trim();
+    if (newText !== '') {
+      updateCardText(card.id, newText);
+    } else {
+      // revert to previous text if cleared
+      content.innerText = card.text;
+    }
+  });
+
+  // Delete button
+  const delBtn = document.createElement('button');
+  delBtn.className = 'text-red-500 hover:text-red-700 float-right';
+  delBtn.title = 'Delete';
+  delBtn.innerHTML = '&times;';
+
+  // Show confirmation modal on delete click
+  delBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // prevent drag start
+    showConfirmModal(() => {
+      deleteCard(card.id);
+    });
+  });
+
+  el.appendChild(delBtn);
+  el.appendChild(content);
+
+  // Drag events -------------------------------------------------
+  el.addEventListener('dragstart', onDragStart);
+  el.addEventListener('dragend', onDragEnd);
+  return el;
+}
+
+/* -------------------------------------------------------------
+   Card operations (add / update / delete)
+   ------------------------------------------------------------- */
+
+/**
+ * Add a new card to a column.
+ */
+function addCard(columnId) {
+  const text = prompt('Enter card title'); // Using prompt is disallowed – replace with simple inline input
+  // Instead we create an in‑place editable card directly:
+  const newCard = { id: genId(), text: 'New Card' };
+  boardData[columnId].push(newCard);
+  saveBoard();
+  renderBoard();
+
+  // Immediately focus the newly created card for editing
+  setTimeout(() => {
+    const el = document.querySelector(`.card[data-id="${newCard.id}"] .content`);
+    if (el) {
+      el.focus();
+      // place cursor at end
+      document.execCommand('selectAll', false, null);
+      document.getSelection().collapseToEnd();
+    }
+  }, 0);
+}
+
+/**
+ * Update card text and persist.
+ */
+function updateCardText(cardId, newText) {
+  for (const col of COLUMNS) {
+    const list = boardData[col.id];
+    const card = list.find(c => c.id === cardId);
+    if (card) {
+      card.text = newText;
+      saveBoard();
+      break;
+    }
+  }
+}
+
+/**
+ * Delete a card after confirmation.
+ */
+function deleteCard(cardId) {
+  for (const col of COLUMNS) {
+    const list = boardData[col.id];
+    const idx = list.findIndex(c => c.id === cardId);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      saveBoard();
+      renderBoard();
+      break;
+    }
+  }
+}
+
+/* -------------------------------------------------------------
+   Drag‑and‑Drop handling
+   ------------------------------------------------------------- */
+
+let draggedCard = null; // reference to the element being moved
+
+function onDragStart(e) {
+  draggedCard = e.currentTarget;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', draggedCard.dataset.id);
+  setTimeout(() => draggedCard.classList.add('dragging'), 0);
+}
+
+function onDragEnd() {
+  if (draggedCard) draggedCard.classList.remove('dragging');
+  draggedCard = null;
+}
+
+/**
+ * Attach drag listeners to column containers.
+ */
+function initColumnDnD() {
+  const cols = document.querySelectorAll('[data-column]');
+  cols.forEach(col => {
+    col.addEventListener('dragover', (e) => {
+      e.preventDefault(); // allow drop
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', onDrop);
+  });
+}
+
+/**
+ * Handle dropping a card into a column.
+ */
+function onDrop(e) {
+  e.preventDefault();
+  const targetColId = e.currentTarget.dataset.column;
+  e.currentTarget.classList.remove('drag-over');
+
+  if (!draggedCard) return;
+
+  // Remove from old column data
+  const cardId = draggedCard.dataset.id;
+  let movedCard = null;
+  for (const col of COLUMNS) {
+    const list = boardData[col.id];
+    const idx = list.findIndex(c => c.id === cardId);
+    if (idx !== -1) {
+      movedCard = list.splice(idx, 1)[0];
+      break;
+    }
+  }
+
+  // Insert into new column data
+  boardData[targetColId].push(movedCard);
+  saveBoard();
+  renderBoard();
+
+  // If moved to Done column → celebrate!
+  if (targetColId === 'done') launchConfetti();
+}
+
+/* -------------------------------------------------------------
+   Confirmation Modal
+   ------------------------------------------------------------- */
+
+let confirmCallback = null;
+
+function showConfirmModal(callback) {
+  confirmCallback = callback;
+  document.getElementById('confirmModal').classList.remove('hidden');
+}
+
+document.getElementById('cancelBtn').addEventListener('click', () => {
+  document.getElementById('confirmModal').classList.add('hidden');
+});
+
+document.getElementById('confirmBtn').addEventListener('click', () => {
+  if (typeof confirmCallback === 'function') confirmCallback();
+  document.getElementById('confirmModal').classList.add('hidden');
+});
+
+/* -------------------------------------------------------------
+   Confetti celebration
+   ------------------------------------------------------------- */
+function launchConfetti() {
+  const duration = 2 * 1000;
+  const end = Date.now() + duration;
+
+  (function frame() {
+    confetti({
+      particleCount: 3,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0 },
+      colors: ['#bb0000', '#ffffff']
+    });
+    confetti({
+      particleCount: 3,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1 },
+      colors: ['#bb0000', '#ffffff']
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  })();
+}
+
+/* -------------------------------------------------------------
+   Event bindings for "Add card" buttons
+   ------------------------------------------------------------- */
+function initAddButtons() {
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.addBtn');
+    if (!btn) return;
+    const colId = btn.dataset.column;
+    addCard(colId);
+  });
+}
+
+/* -------------------------------------------------------------
+   Initialisation
+   ------------------------------------------------------------- */
+function init() {
+  renderBoard();
+  initColumnDnD();
+  initAddButtons();
+}
+init();
+
+</script>
+</body>
+</html>

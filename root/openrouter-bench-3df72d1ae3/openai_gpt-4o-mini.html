@@ -1,0 +1,157 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        .confetti {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0;
+            animation: fall 1s forwards;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-100vh); opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-5">
+
+    <div class="flex space-x-4">
+        <div class="w-1/4 bg-white rounded-lg shadow p-4" id="backlog">
+            <h2 class="font-bold text-lg mb-2">Backlog</h2>
+            <button onclick="addCard('backlog')" class="bg-blue-500 text-white px-2 py-1 rounded mb-2">Add Card</button>
+            <div class="card-container"></div>
+        </div>
+        <div class="w-1/4 bg-white rounded-lg shadow p-4" id="in-progress">
+            <h2 class="font-bold text-lg mb-2">In Progress</h2>
+            <button onclick="addCard('in-progress')" class="bg-blue-500 text-white px-2 py-1 rounded mb-2">Add Card</button>
+            <div class="card-container"></div>
+        </div>
+        <div class="w-1/4 bg-white rounded-lg shadow p-4" id="review">
+            <h2 class="font-bold text-lg mb-2">Review</h2>
+            <button onclick="addCard('review')" class="bg-blue-500 text-white px-2 py-1 rounded mb-2">Add Card</button>
+            <div class="card-container"></div>
+        </div>
+        <div class="w-1/4 bg-white rounded-lg shadow p-4" id="done">
+            <h2 class="font-bold text-lg mb-2">Done</h2>
+            <button onclick="addCard('done')" class="bg-blue-500 text-white px-2 py-1 rounded mb-2">Add Card</button>
+            <div class="card-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const namespace = 'kanbanBoard';
+
+        // Initialize the Kanban board from localStorage
+        function init() {
+            const columns = ['backlog', 'in-progress', 'review', 'done'];
+            columns.forEach(column => {
+                const cards = JSON.parse(localStorage.getItem(`${namespace}-${column}`)) || [];
+                cards.forEach(card => createCardElement(column, card));
+            });
+        }
+
+        // Create a card element
+        function createCardElement(column, cardContent) {
+            const cardContainer = document.getElementById(column).querySelector('.card-container');
+            const card = document.createElement('div');
+            card.className = 'card bg-blue-100 p-2 rounded mb-2 cursor-move';
+            card.draggable = true;
+            card.innerHTML = `
+                <span contenteditable="true" onblur="updateCard('${column}', this.innerText)">${cardContent}</span>
+                <button class="text-red-500" onclick="deleteCard('${column}', this)">🗑️</button>
+            `;
+            card.addEventListener('dragstart', dragStart);
+            card.addEventListener('dragend', dragEnd);
+            cardContainer.appendChild(card);
+        }
+
+        // Add a new card
+        function addCard(column) {
+            const cardContent = prompt('Enter card content:') || 'New Card';
+            createCardElement(column, cardContent);
+            saveCards(column);
+        }
+
+        // Update card content
+        function updateCard(column, newContent) {
+            saveCards(column);
+        }
+
+        // Delete a card with confirmation
+        function deleteCard(column, button) {
+            if (confirm('Are you sure you want to delete this card?')) {
+                const card = button.parentElement;
+                card.remove();
+                saveCards(column);
+            }
+        }
+
+        // Save cards to localStorage
+        function saveCards(column) {
+            const cardElements = document.getElementById(column).querySelectorAll('.card span');
+            const cards = Array.from(cardElements).map(card => card.innerText);
+            localStorage.setItem(`${namespace}-${column}`, JSON.stringify(cards));
+        }
+
+        // Drag and drop functionality
+        let draggedCard = null;
+
+        function dragStart(event) {
+            draggedCard = event.target;
+            event.dataTransfer.effectAllowed = "move";
+        }
+
+        function dragEnd(event) {
+            draggedCard = null;
+        }
+
+        document.querySelectorAll('.card-container').forEach(container => {
+            container.addEventListener('dragover', (event) => {
+                event.preventDefault();
+            });
+
+            container.addEventListener('drop', (event) => {
+                event.preventDefault();
+                const targetColumn = event.target.closest('.card-container').parentElement.id;
+                
+                // Move the card to the new column
+                if (targetColumn !== draggedCard.parentElement.parentElement.id) {
+                    if (targetColumn === 'done') {
+                        triggerConfetti(draggedCard);
+                    }
+                    event.target.closest('.card-container').appendChild(draggedCard);
+                    saveCards(targetColumn);
+                }
+            });
+        });
+
+        // Confetti animation (simple implementation)
+        function triggerConfetti(card) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = `${card.getBoundingClientRect().left + 20}px`;
+            confetti.style.top = `${card.getBoundingClientRect().top + 20}px`;
+            confetti.innerHTML = '🎉';
+            document.body.appendChild(confetti);
+            setTimeout(() => {
+                confetti.remove();
+            }, 1000);
+        }
+
+        // Initialize the board on page load
+        window.onload = init;
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,896 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vibrant Vanilla Kanban</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Google Font for a modern look -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- TailwindCSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    /* Tailwind configuration override to tweak the color palette and fonts */
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              400: '#8B5CF6',
+              500: '#6366F1',
+              600: '#4F46E5',
+              700: '#4338CA',
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Confetti library for celebrations -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" integrity="sha384-uPhuwAr1PWQlpu0e3KnVV8eigcXC1naBMFwJFRWnkfnUrf9m6pjo8oY2AE85gH8v" crossorigin="anonymous"></script>
+
+  <style>
+    /* Base aesthetic tweaks */
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* Glassmorphism-inspired column styling */
+    .kanban-column {
+      transition: transform 0.25s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+    }
+    .kanban-column:hover {
+      transform: translateY(-6px);
+      border-color: rgba(99, 102, 241, 0.45);
+      box-shadow: 0 30px 60px rgba(15, 23, 42, 0.45);
+    }
+    .kanban-column.drop-target {
+      border-color: rgba(129, 140, 248, 0.8);
+      box-shadow: 0 25px 70px rgba(99, 102, 241, 0.45);
+    }
+
+    /* Card transitions and hover effects */
+    .kanban-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .kanban-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(79, 70, 229, 0.25);
+    }
+    .kanban-card.is-editing {
+      border-color: rgba(129, 140, 248, 0.6);
+      box-shadow: 0 18px 36px rgba(99, 102, 241, 0.35);
+      background-color: rgba(20, 30, 60, 0.8);
+    }
+    .kanban-card.dragging {
+      opacity: 0.35;
+      box-shadow: none;
+    }
+
+    /* Delete button subtle reveal */
+    .kanban-card button[data-action="delete-card"] {
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity 0.15s ease, transform 0.18s ease;
+    }
+    .kanban-card:hover button[data-action="delete-card"],
+    .kanban-card:focus-within button[data-action="delete-card"] {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Empty column placeholder styling */
+    .column-empty-placeholder {
+      border: 1px dashed rgba(148, 163, 184, 0.3);
+      border-radius: 1.25rem;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: rgba(226, 232, 240, 0.65);
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.06), rgba(56, 189, 248, 0.05));
+    }
+
+    /* Modal transitions */
+    .modal-backdrop {
+      transition: opacity 0.2s ease;
+    }
+    .modal-panel {
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .modal-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .modal-hidden .modal-panel {
+      opacity: 0;
+      transform: translateY(24px) scale(0.98);
+      pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .kanban-column,
+      .kanban-card,
+      .modal-backdrop,
+      .modal-panel {
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-slate-100 selection:bg-brand-500/40 selection:text-white">
+  <div class="relative mx-auto flex min-h-screen max-w-7xl flex-col gap-8 px-4 pb-16 pt-12 sm:px-6 lg:px-8">
+    <!-- Decorative glow -->
+    <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <div class="absolute left-1/2 top-24 h-72 w-[36rem] -translate-x-1/2 rounded-full bg-brand-500/30 blur-[120px]"></div>
+      <div class="absolute right-0 top-[60%] h-64 w-64 translate-x-1/3 rounded-full bg-cyan-400/20 blur-[120px]"></div>
+    </div>
+
+    <header class="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+      <div class="max-w-2xl">
+        <p class="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs uppercase tracking-[0.28em] text-white/70 backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
+          Flow State
+        </p>
+        <h1 class="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+          Product Flow Kanban
+        </h1>
+        <p class="mt-3 text-base text-slate-300">
+          Track every stage of your product journey with a playful, responsive board. Drag cards, edit inline,
+          and celebrate your wins automatically.
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 backdrop-blur">
+          Auto-saved locally
+        </span>
+      </div>
+    </header>
+
+    <main id="boardContainer" class="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <!-- Backlog Column -->
+      <section data-column="backlog" class="kanban-column group flex flex-col gap-5 rounded-[28px] border border-white/10 bg-gradient-to-br from-white/15 via-white/5 to-transparent p-5 backdrop-blur-xl">
+        <header class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-semibold text-white">Backlog</h2>
+            <p class="mt-1 text-sm text-slate-300">Ideas, insights, and future explorations.</p>
+          </div>
+          <span data-column-count="backlog" class="rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white">0</span>
+        </header>
+        <div data-column-list="backlog" class="flex min-h-[220px] flex-1 flex-col gap-4"></div>
+        <button data-action="add-card" data-column-target="backlog" class="mt-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 shadow-inner shadow-white/10 transition hover:border-white/40 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70">
+          <span class="text-lg leading-none">＋</span>
+          Add card
+        </button>
+      </section>
+
+      <!-- In Progress Column -->
+      <section data-column="in-progress" class="kanban-column group flex flex-col gap-5 rounded-[28px] border border-white/10 bg-gradient-to-br from-brand-500/15 via-white/10 to-transparent p-5 backdrop-blur-xl">
+        <header class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-semibold text-white">In Progress</h2>
+            <p class="mt-1 text-sm text-slate-300">Active tasks currently being crafted.</p>
+          </div>
+          <span data-column-count="in-progress" class="rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white">0</span>
+        </header>
+        <div data-column-list="in-progress" class="flex min-h-[220px] flex-1 flex-col gap-4"></div>
+        <button data-action="add-card" data-column-target="in-progress" class="mt-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 shadow-inner shadow-white/10 transition hover:border-white/40 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70">
+          <span class="text-lg leading-none">＋</span>
+          Add card
+        </button>
+      </section>
+
+      <!-- Review Column -->
+      <section data-column="review" class="kanban-column group flex flex-col gap-5 rounded-[28px] border border-white/10 bg-gradient-to-br from-cyan-400/15 via-white/10 to-transparent p-5 backdrop-blur-xl">
+        <header class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-semibold text-white">Review</h2>
+            <p class="mt-1 text-sm text-slate-300">Validation, QA, and sign-off tasks.</p>
+          </div>
+          <span data-column-count="review" class="rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white">0</span>
+        </header>
+        <div data-column-list="review" class="flex min-h-[220px] flex-1 flex-col gap-4"></div>
+        <button data-action="add-card" data-column-target="review" class="mt-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 shadow-inner shadow-white/10 transition hover:border-white/40 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70">
+          <span class="text-lg leading-none">＋</span>
+          Add card
+        </button>
+      </section>
+
+      <!-- Done Column -->
+      <section data-column="done" class="kanban-column group flex flex-col gap-5 rounded-[28px] border border-white/10 bg-gradient-to-br from-emerald-400/20 via-white/10 to-transparent p-5 backdrop-blur-xl">
+        <header class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-semibold text-white">Done</h2>
+            <p class="mt-1 text-sm text-slate-300">Shipped work ready to celebrate.</p>
+          </div>
+          <span data-column-count="done" class="rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white">0</span>
+        </header>
+        <div data-column-list="done" class="flex min-h-[220px] flex-1 flex-col gap-4"></div>
+        <button data-action="add-card" data-column-target="done" class="mt-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 shadow-inner shadow-white/10 transition hover:border-white/40 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70">
+          <span class="text-lg leading-none">＋</span>
+          Add card
+        </button>
+      </section>
+    </main>
+  </div>
+
+  <!-- Custom confirmation modal -->
+  <div id="confirmModal" class="modal-hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div class="modal-backdrop absolute inset-0 bg-slate-950/70 backdrop-blur-sm"></div>
+    <div class="modal-panel relative w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-900/80 p-6 text-slate-100 shadow-[0_28px_80px_rgba(15,23,42,0.65)]">
+      <div class="flex items-start gap-4">
+        <div class="flex h-10 w-10 flex-none items-center justify-center rounded-2xl bg-brand-500/20 text-brand-200">
+          <!-- Trash icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l.197 8.294m4.106-8.294l-.197 8.294M4.5 6.75h15m-1.5 0l-.621 9.315a2.25 2.25 0 01-2.244 2.085H8.865a2.25 2.25 0 01-2.244-2.085L6 6.75m3.75 0V4.875A1.125 1.125 0 0110.875 3.75h2.25A1.125 1.125 0 0114.25 4.875V6.75" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-white">Delete card?</h3>
+          <p class="mt-1 text-sm text-slate-300">
+            This action will remove the card permanently from your board.
+          </p>
+          <div class="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200" id="confirmCardText">
+            <!-- Card text will be injected here dynamically -->
+          </div>
+        </div>
+      </div>
+      <div class="mt-6 flex items-center justify-end gap-3">
+        <button type="button" data-action="cancel-delete" class="rounded-2xl border border-white/20 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-white/40 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70">
+          Keep card
+        </button>
+        <button type="button" data-action="confirm-delete" class="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-brand-500/30 transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    /**
+     * Vibrant Vanilla Kanban
+     * ----------------------
+     * A lightweight Kanban board built with vanilla JavaScript.
+     * - Drag & drop across columns
+     * - Inline editing
+     * - LocalStorage persistence
+     * - Custom confirmation modal for deletions
+     * - Confetti celebration when tasks move to "Done"
+     *
+     * This script intentionally avoids frameworks to demonstrate modern DOM manipulation,
+     * state management, and progressive enhancements with plain JavaScript.
+     */
+
+    /* Namespaced localStorage key to prevent collisions with other apps */
+    const STORAGE_KEY = 'vibrantVanillaKanban_state_v1';
+
+    /* Column metadata used for rendering, counts, and drop logic */
+    const COLUMNS = [
+      { id: 'backlog', title: 'Backlog' },
+      { id: 'in-progress', title: 'In Progress' },
+      { id: 'review', title: 'Review' },
+      { id: 'done', title: 'Done' },
+    ];
+
+    /* Mutable in-memory state that mirrors the stored data */
+    let state = { cards: [] };
+
+    /* Runtime helpers */
+    let focusCardId = null;           // Stores the card ID that should enter edit mode after render
+    let pendingDeleteId = null;       // Stores the card ID pending deletion confirmation
+    let draggedCardId = null;         // Stores the currently dragged card ID
+    let draggedFromColumn = null;     // Remembers the column origin for celebration logic
+
+    /* Quick reference to detect motion preferences and respect accessibility */
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+    /* Initialize the application */
+    init();
+
+    /**
+     * Bootstraps the board:
+     * - Loads persisted state (or seeds defaults)
+     * - Renders the board
+     * - Wires global event handlers
+     */
+    function init() {
+      loadState();
+      renderBoard();
+      bindGlobalEvents();
+    }
+
+    /**
+     * Safely loads state from localStorage.
+     * Falls back to curated seed cards if no data is present.
+     */
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.cards)) {
+            state.cards = parsed.cards.filter(isValidCard);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to parse saved Kanban state, using defaults instead.', error);
+      }
+
+      if (!Array.isArray(state.cards) || state.cards.length === 0) {
+        state.cards = createDefaultCards();
+        persistState();
+      }
+    }
+
+    /**
+     * Validates card objects loaded from storage to avoid runtime errors.
+     * @param {Object} card
+     */
+    function isValidCard(card) {
+      return Boolean(
+        card &&
+        typeof card.id === 'string' &&
+        typeof card.text === 'string' &&
+        COLUMNS.some(column => column.id === card.column)
+      );
+    }
+
+    /**
+     * Persists the current state to localStorage.
+     */
+    function persistState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (error) {
+        console.error('Unable to persist Kanban state.', error);
+      }
+    }
+
+    /**
+     * Generates a set of initial cards to avoid an empty board on first load.
+     */
+    function createDefaultCards() {
+      const seed = [
+        { column: 'backlog', text: 'Research delightful micro-interactions for onboarding flow.' },
+        { column: 'backlog', text: 'Draft UX copy for the new pricing experiment.' },
+        { column: 'in-progress', text: 'Build responsive dashboard tiles for executive view.' },
+        { column: 'review', text: 'QA the billing update across browsers and devices.' },
+        { column: 'done', text: 'Publish release notes for version 2.4 to changelog.' },
+      ];
+      return seed.map(card => ({ ...card, id: generateId() }));
+    }
+
+    /**
+     * Generates a unique identifier for cards.
+     */
+    function generateId() {
+      return typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `card_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    /**
+     * Renders the entire board based on current state.
+     * - Clears each column
+     * - Injects card DOM nodes in state order
+     * - Updates counts
+     * - Handles focus for newly created cards
+     */
+    function renderBoard() {
+      COLUMNS.forEach(({ id }) => {
+        const columnListEl = document.querySelector(`[data-column-list="${id}"]`);
+        if (!columnListEl) return;
+
+        // Clear the column before re-rendering
+        columnListEl.innerHTML = '';
+
+        // Render cards in the order they appear within the state array
+        let cardsInColumn = 0;
+        state.cards.forEach(card => {
+          if (card.column === id) {
+            columnListEl.appendChild(createCardElement(card));
+            cardsInColumn += 1;
+          }
+        });
+
+        // Update the live card count badge
+        const countBadge = document.querySelector(`[data-column-count="${id}"]`);
+        if (countBadge) {
+          countBadge.textContent = cardsInColumn;
+        }
+
+        // If the column is empty, display a friendly placeholder
+        if (cardsInColumn === 0) {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'column-empty-placeholder text-sm';
+          placeholder.innerHTML = `
+            <div class="font-medium text-white/80">No cards yet</div>
+            <div class="mt-2 text-xs text-white/70">Bring ideas here by dragging or creating new ones.</div>
+          `;
+          columnListEl.appendChild(placeholder);
+        }
+      });
+
+      // After rendering, focus the specified card (e.g., newly added card) to allow immediate editing
+      if (focusCardId) {
+        requestAnimationFrame(() => {
+          enterEditMode(focusCardId);
+          focusCardId = null;
+        });
+      }
+    }
+
+    /**
+     * Creates a card DOM structure with necessary event bindings.
+     * @param {Object} card
+     */
+    function createCardElement(card) {
+      const cardEl = document.createElement('article');
+      cardEl.className = 'kanban-card relative rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 via-slate-900/70 to-slate-900/50 p-4 shadow-[0_20px_40px_rgba(15,23,42,0.45)] outline-none';
+      cardEl.setAttribute('draggable', 'true');
+      cardEl.dataset.cardId = card.id;
+      cardEl.dataset.column = card.column;
+
+      // Drag events
+      cardEl.addEventListener('dragstart', handleCardDragStart);
+      cardEl.addEventListener('dragend', handleCardDragEnd);
+
+      // Delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.setAttribute('data-action', 'delete-card');
+      deleteBtn.className = 'absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-200 backdrop-blur transition hover:border-white/30 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70';
+      deleteBtn.setAttribute('aria-label', 'Delete card');
+      deleteBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l.197 8.294m4.106-8.294l-.197 8.294M4.5 6.75h15m-1.5 0l-.621 9.315a2.25 2.25 0 01-2.244 2.085H8.865a2.25 2.25 0 01-2.244-2.085L6 6.75m3.75 0V4.875A1.125 1.125 0 0110.875 3.75h2.25A1.125 1.125 0 0114.25 4.875V6.75" />
+        </svg>
+      `;
+      deleteBtn.addEventListener('click', () => openConfirmModal(card.id));
+      cardEl.appendChild(deleteBtn);
+
+      // Card body content
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'flex flex-col gap-3 pr-8';
+
+      // Subtle status chip per column
+      const statusBadge = document.createElement('div');
+      statusBadge.className = 'inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-white/60';
+      statusBadge.innerHTML = `
+        <span class="h-1.5 w-1.5 rounded-full ${mapColumnToColor(card.column)}"></span>
+        ${mapColumnToLabel(card.column)}
+      `;
+      bodyEl.appendChild(statusBadge);
+
+      // Editable text region
+      const textEl = document.createElement('div');
+      textEl.dataset.role = 'card-text';
+      textEl.className = 'min-h-[72px] whitespace-pre-wrap break-words text-sm text-slate-100 focus:outline-none';
+      textEl.setAttribute('contenteditable', 'false');
+      textEl.setAttribute('spellcheck', 'false');
+      textEl.setAttribute('tabindex', '0');
+      textEl.textContent = card.text || 'New task';
+      // Event handlers to support inline editing
+      textEl.addEventListener('dblclick', () => enterEditMode(card.id));
+      textEl.addEventListener('focus', handleTextFocus);
+      textEl.addEventListener('blur', handleTextBlur);
+      textEl.addEventListener('keydown', handleTextKeydown);
+      textEl.addEventListener('keypress', event => {
+        // Prevent new line insertion when not editing (safeguard, as Enter toggles editing)
+        if (!textEl.isContentEditable && event.key === 'Enter') {
+          event.preventDefault();
+        }
+      });
+      textEl.addEventListener('keydown', event => {
+        if (!textEl.isContentEditable && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          enterEditMode(card.id);
+        }
+      });
+
+      bodyEl.appendChild(textEl);
+      cardEl.appendChild(bodyEl);
+
+      return cardEl;
+    }
+
+    /**
+     * Maps column identifiers to friendly badge text.
+     * @param {string} columnId
+     */
+    function mapColumnToLabel(columnId) {
+      switch (columnId) {
+        case 'backlog':
+          return 'Idea';
+        case 'in-progress':
+          return 'Active';
+        case 'review':
+          return 'Review';
+        case 'done':
+          return 'Shipped';
+        default:
+          return 'Flow';
+      }
+    }
+
+    /**
+     * Maps column identifiers to accent colors for the status badge.
+     * @param {string} columnId
+     */
+    function mapColumnToColor(columnId) {
+      switch (columnId) {
+        case 'backlog':
+          return 'bg-fuchsia-300';
+        case 'in-progress':
+          return 'bg-sky-300';
+        case 'review':
+          return 'bg-amber-300';
+        case 'done':
+          return 'bg-emerald-300';
+        default:
+          return 'bg-white/60';
+      }
+    }
+
+    /**
+     * Handles double-click edit initiation and focus for newly added cards.
+     * @param {string} cardId - The ID of the card to edit.
+     */
+    function enterEditMode(cardId) {
+      const textEl = document.querySelector(`[data-card-id="${cardId}"] [data-role="card-text"]`);
+      const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
+      if (!textEl || !cardEl) return;
+
+      cardEl.classList.add('is-editing');
+      textEl.setAttribute('contenteditable', 'true');
+      textEl.dataset.editing = 'true';
+
+      // Place the caret at the end of the text content
+      focusEditableElement(textEl);
+    }
+
+    /**
+     * Places the caret at the end of a contenteditable element.
+     * @param {HTMLElement} el
+     */
+    function focusEditableElement(el) {
+      el.focus({ preventScroll: false });
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    /**
+     * Remembers the original text upon focus to support cancelling (Escape).
+     * @param {FocusEvent} event
+     */
+    function handleTextFocus(event) {
+      const textEl = event.currentTarget;
+      textEl.dataset.originalText = textEl.textContent.trim();
+    }
+
+    /**
+     * Commits text changes on blur, ensuring cards never remain empty.
+     * @param {FocusEvent} event
+     */
+    function handleTextBlur(event) {
+      const textEl = event.currentTarget;
+      const cardEl = textEl.closest('[data-card-id]');
+      if (!cardEl) return;
+
+      const cardId = cardEl.dataset.cardId;
+      let newText = textEl.textContent.trim();
+      if (newText.length === 0) {
+        newText = 'Untitled card';
+        textEl.textContent = newText;
+      }
+
+      textEl.removeAttribute('data-editing');
+      textEl.setAttribute('contenteditable', 'false');
+      cardEl.classList.remove('is-editing');
+
+      if (textEl.dataset.wasEscaped === 'true') {
+        // Remove the escape flag and skip updating since the text was restored already
+        delete textEl.dataset.wasEscaped;
+      } else {
+        updateCardText(cardId, newText);
+      }
+    }
+
+    /**
+     * Handles keyboard shortcuts within the editable text region.
+     * - Enter (without Shift): save & blur
+     * - Escape: revert to original text
+     * @param {KeyboardEvent} event
+     */
+    function handleTextKeydown(event) {
+      const textEl = event.currentTarget;
+      if (textEl.getAttribute('contenteditable') !== 'true') return;
+
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        textEl.blur();
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        const original = textEl.dataset.originalText ?? textEl.textContent;
+        textEl.textContent = original;
+        textEl.dataset.wasEscaped = 'true';
+        textEl.blur();
+      }
+    }
+
+    /**
+     * Updates the card text and persists the change.
+     * @param {string} cardId
+     * @param {string} newText
+     */
+    function updateCardText(cardId, newText) {
+      const card = state.cards.find(c => c.id === cardId);
+      if (!card) return;
+      if (card.text !== newText) {
+        card.text = newText;
+        persistState();
+      }
+    }
+
+    /**
+     * Binds global events for add buttons, modal controls, and drag targets.
+     */
+    function bindGlobalEvents() {
+      // Add-card buttons
+      document.querySelectorAll('[data-action="add-card"]').forEach(button => {
+        button.addEventListener('click', () => {
+          const columnId = button.dataset.columnTarget;
+          handleAddCard(columnId);
+        });
+      });
+
+      // Column drop zones
+      document.querySelectorAll('[data-column-list]').forEach(listEl => {
+        listEl.addEventListener('dragover', handleColumnDragOver);
+        listEl.addEventListener('drop', handleColumnDrop);
+        listEl.addEventListener('dragleave', handleColumnDragLeave);
+      });
+
+      // Modal controls
+      document.querySelector('[data-action="cancel-delete"]').addEventListener('click', closeConfirmModal);
+      document.querySelector('[data-action="confirm-delete"]').addEventListener('click', confirmDelete);
+
+      // Dismiss modal with Escape
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !document.getElementById('confirmModal').classList.contains('modal-hidden')) {
+          closeConfirmModal();
+        }
+      });
+
+      // Close modal when clicking on the backdrop
+      document.querySelector('#confirmModal .modal-backdrop').addEventListener('click', closeConfirmModal);
+    }
+
+    /**
+     * Handles the drag start event to set metadata for the ongoing drag operation.
+     * @param {DragEvent} event
+     */
+    function handleCardDragStart(event) {
+      const cardEl = event.currentTarget;
+      draggedCardId = cardEl.dataset.cardId;
+      draggedFromColumn = cardEl.dataset.column;
+      cardEl.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedCardId);
+    }
+
+    /**
+     * Cleans up drag state when the drag operation ends.
+     * @param {DragEvent} event
+     */
+    function handleCardDragEnd(event) {
+      const cardEl = event.currentTarget;
+      cardEl.classList.remove('dragging');
+      draggedCardId = null;
+      draggedFromColumn = null;
+    }
+
+    /**
+     * Highlights the drop target column and allows drop.
+     * @param {DragEvent} event
+     */
+    function handleColumnDragOver(event) {
+      event.preventDefault();
+      const listEl = event.currentTarget;
+      const columnEl = listEl.closest('[data-column]');
+      if (columnEl) {
+        columnEl.classList.add('drop-target');
+      }
+    }
+
+    /**
+     * Removes drop highlight when the dragged item leaves the column.
+     * @param {DragEvent} event
+     */
+    function handleColumnDragLeave(event) {
+      const listEl = event.currentTarget;
+      const columnEl = listEl.closest('[data-column]');
+      if (columnEl) {
+        columnEl.classList.remove('drop-target');
+      }
+    }
+
+    /**
+     * Handles dropping a card into a column and reorders cards accordingly.
+     * @param {DragEvent} event
+     */
+    function handleColumnDrop(event) {
+      event.preventDefault();
+      const listEl = event.currentTarget;
+      const columnId = listEl.dataset.columnList;
+      const columnEl = listEl.closest('[data-column]');
+      if (columnEl) {
+        columnEl.classList.remove('drop-target');
+      }
+      if (!draggedCardId) return;
+
+      // Calculate the insertion point based on pointer position
+      const afterElement = getDragAfterElement(listEl, event.clientY);
+      const beforeCardId = afterElement ? afterElement.dataset.cardId : null;
+
+      moveCard(draggedCardId, columnId, beforeCardId);
+
+      // Check if card reached "Done" to celebrate the accomplishment
+      if (columnId === 'done' && draggedFromColumn !== 'done') {
+        launchConfetti();
+      }
+
+      persistState();
+      renderBoard();
+    }
+
+    /**
+     * Determines which card element (if any) appears immediately after the pointer during drag.
+     * @param {HTMLElement} container
+     * @param {number} pointerY
+     */
+    function getDragAfterElement(container, pointerY) {
+      const draggableElements = [...container.querySelectorAll('.kanban-card:not(.dragging)')];
+      return draggableElements.reduce(
+        (closest, child) => {
+          const rect = child.getBoundingClientRect();
+          const offset = pointerY - rect.top - rect.height / 2;
+          if (offset < 0 && offset > closest.offset) {
+            return { offset, element: child };
+          }
+          return closest;
+        },
+        { offset: Number.NEGATIVE_INFINITY, element: null }
+      ).element;
+    }
+
+    /**
+     * Moves a card to a new column and repositions it relative to the drop target.
+     * @param {string} cardId
+     * @param {string} targetColumn
+     * @param {string|null} beforeCardId - Card before which the dragged card should be inserted.
+     */
+    function moveCard(cardId, targetColumn, beforeCardId) {
+      const cardIndex = state.cards.findIndex(card => card.id === cardId);
+      if (cardIndex === -1) return;
+
+      const [card] = state.cards.splice(cardIndex, 1);
+      card.column = targetColumn;
+
+      // Insert before the specified card if applicable
+      if (beforeCardId) {
+        const beforeIndex = state.cards.findIndex(card => card.id === beforeCardId);
+        if (beforeIndex === -1) {
+          state.cards.push(card);
+        } else {
+          state.cards.splice(beforeIndex, 0, card);
+        }
+      } else {
+        // Append to the end of the target column segment
+        let lastIndexInColumn = -1;
+        for (let i = state.cards.length - 1; i >= 0; i -= 1) {
+          if (state.cards[i].column === targetColumn) {
+            lastIndexInColumn = i;
+            break;
+          }
+        }
+        if (lastIndexInColumn === -1) {
+          state.cards.push(card);
+        } else {
+          state.cards.splice(lastIndexInColumn + 1, 0, card);
+        }
+      }
+    }
+
+    /**
+     * Creates a new card in the specified column and opens it for editing immediately.
+     * @param {string} columnId
+     */
+    function handleAddCard(columnId) {
+      const newCard = {
+        id: generateId(),
+        text: 'New task',
+        column: columnId,
+      };
+      state.cards.push(newCard);
+      persistState();
+
+      // Remember the card so we can auto-focus and enable editing after rendering
+      focusCardId = newCard.id;
+      renderBoard();
+    }
+
+    /**
+     * Displays the custom confirmation modal with the card details.
+     * @param {string} cardId
+     */
+    function openConfirmModal(cardId) {
+      pendingDeleteId = cardId;
+      const modal = document.getElementById('confirmModal');
+      const card = state.cards.find(c => c.id === cardId);
+      const cardTextEl = document.getElementById('confirmCardText');
+
+      if (card && cardTextEl) {
+        cardTextEl.textContent = card.text;
+      }
+
+      modal.classList.remove('modal-hidden');
+      document.body.classList.add('overflow-hidden');
+
+      // Focus the destructive action to encourage deliberate handling
+      requestAnimationFrame(() => {
+        document.querySelector('[data-action="confirm-delete"]').focus();
+      });
+    }
+
+    /**
+     * Closes the confirmation modal without deleting the card.
+     */
+    function closeConfirmModal() {
+      pendingDeleteId = null;
+      const modal = document.getElementById('confirmModal');
+      modal.classList.add('modal-hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    /**
+     * Removes the card from state upon confirmation and re-renders the board.
+     */
+    function confirmDelete() {
+      if (!pendingDeleteId) return;
+      state.cards = state.cards.filter(card => card.id !== pendingDeleteId);
+      pendingDeleteId = null;
+      persistState();
+      closeConfirmModal();
+      renderBoard();
+    }
+
+    /**
+     * Launches a celebratory confetti burst when a task reaches "Done".
+     * Respects reduced-motion preferences automatically.
+     */
+    function launchConfetti() {
+      if (prefersReducedMotion || typeof confetti !== 'function') {
+        return;
+      }
+      const defaults = {
+        origin: { y: 0.2 },
+        scalar: 1.1,
+        ticks: 200,
+      };
+      confetti({ ...defaults, particleCount: 140, spread: 60, startVelocity: 45, colors: ['#A855F7', '#38BDF8', '#34D399', '#FACC15'] });
+      setTimeout(() => confetti({ ...defaults, particleCount: 90, spread: 80, startVelocity: 35, colors: ['#6366F1', '#C084FC', '#22D3EE'] }), 180);
+    }
+  </script>
+</body>
+</html>

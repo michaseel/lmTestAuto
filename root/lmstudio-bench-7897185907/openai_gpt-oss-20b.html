@@ -1,0 +1,216 @@
+<html lang="en" class="h-full bg-gray-100">
+<head>
+<meta charset="UTF-8">
+<title>Vanilla JS Kanban Board</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* Custom styles for drag‑over highlight */
+.drag-over {
+  @apply outline-2 outline-dashed outline-indigo-400;
+}
+/* Simple confetti keyframes */
+@keyframes fall {
+  0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.confetti-piece {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  background-color: var(--c);
+  animation: fall 2s ease-out forwards;
+}
+</style>
+</head>
+<body class="h-full flex items-center justify-center">
+
+<div id="board" class="grid grid-cols-4 gap-6 w-full max-w-screen-xl p-8">
+  <!-- Columns will be inserted here by JS -->
+</div>
+
+<script>
+/* =========================================================
+   Kanban Board – Vanilla JS + Tailwind
+   Author: ChatGPT (2025)
+   ========================================================= */
+
+/* ---------- Global constants & helpers ---------- */
+const STORAGE_KEY = 'kanban-board-state';
+const COLUMN_NAMES = ['Backlog', 'In Progress', 'Review', 'Done'];
+const CONFETTI_COLORS = ['#f44336','#e91e63','#9c27b0','#673ab7',
+                         '#3f51b5','#2196f3','#03a9f4','#00bcd4',
+                         '#009688','#8bc34a','#ffeb3b','#ffc107'];
+const dummyCards = [
+  {id: generateId(), title:'Set up project repo', column:'Backlog'},
+  {id: generateId(), title:'Create design mockups', column:'Backlog'},
+  {id: generateId(), title:'Implement auth flow', column:'In Progress'},
+  {id: generateId(), title:'Code review for PR #42', column:'Review'},
+];
+
+/* ---------- Utility functions ---------- */
+function generateId() {
+  return 'card-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadState() {
+  const data = localStorage.getItem(STORAGE_KEY);
+  return data ? JSON.parse(data) : null;
+}
+
+/* ---------- Confetti animation ---------- */
+function triggerConfetti() {
+  const board = document.getElementById('board');
+  for (let i = 0; i < 30; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.setProperty('--c', CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)]);
+    piece.style.left = Math.random() * 100 + '%';
+    board.appendChild(piece);
+    // Remove after animation
+    piece.addEventListener('animationend', () => piece.remove());
+  }
+}
+
+/* ---------- Card DOM creation ---------- */
+function createCardElement(card) {
+  const cardEl = document.createElement('div');
+  cardEl.className = 'bg-white rounded shadow p-3 mb-2 cursor-move';
+  cardEl.draggable = true;
+  cardEl.dataset.id = card.id;
+
+  // Drag events
+  cardEl.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', card.id);
+  });
+
+  // Content: title editable
+  const titleEl = document.createElement('div');
+  titleEl.className = 'font-semibold';
+  titleEl.textContent = card.title;
+  titleEl.contentEditable = true;
+  titleEl.addEventListener('blur', e => {
+    card.title = e.target.textContent.trim() || 'Untitled';
+    updateState();
+  });
+  cardEl.appendChild(titleEl);
+
+  // Delete button
+  const delBtn = document.createElement('button');
+  delBtn.className = 'mt-2 text-sm text-red-600 hover:text-red-800';
+  delBtn.textContent = 'Delete';
+  delBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (confirm(`Delete "${card.title}"?`)) {
+      deleteCard(card.id);
+    }
+  });
+  cardEl.appendChild(delBtn);
+
+  return cardEl;
+}
+
+/* ---------- Column DOM creation ---------- */
+function createColumn(name, index) {
+  const col = document.createElement('div');
+  col.className = 'bg-gray-200 rounded p-4 flex flex-col h-[80vh]';
+  col.dataset.column = name;
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'flex items-center justify-between mb-4';
+  const title = document.createElement('h2');
+  title.className = 'text-xl font-bold';
+  title.textContent = name;
+  header.appendChild(title);
+  col.appendChild(header);
+
+  // Card container
+  const cardContainer = document.createElement('div');
+  cardContainer.className = 'flex-1 overflow-y-auto';
+  col.appendChild(cardContainer);
+
+  // Add card button
+  const addBtn = document.createElement('button');
+  addBtn.className = 'mt-4 w-full bg-indigo-600 text-white py-1 rounded hover:bg-indigo-700';
+  addBtn.textContent = '+ Add card';
+  addBtn.addEventListener('click', () => {
+    const title = prompt(`New card in ${name}`);
+    if (title) {
+      const newCard = {id: generateId(), title, column: name};
+      state.cards.push(newCard);
+      renderBoard();
+    }
+  });
+  col.appendChild(addBtn);
+
+  // Drag over events
+  col.addEventListener('dragover', e => {
+    e.preventDefault();
+    col.classList.add('drag-over');
+  });
+  col.addEventListener('dragleave', () => {
+    col.classList.remove('drag-over');
+  });
+  col.addEventListener('drop', e => {
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const cardId = e.dataTransfer.getData('text/plain');
+    moveCard(cardId, name);
+  });
+
+  return col;
+}
+
+/* ---------- State management ---------- */
+let state = loadState();
+if (!state) {
+  // No saved data – start with dummy cards
+  state = {cards: dummyCards};
+  saveState(state);
+}
+
+function updateState() {
+  saveState(state);
+}
+
+function deleteCard(id) {
+  state.cards = state.cards.filter(c => c.id !== id);
+  renderBoard();
+}
+
+function moveCard(id, newColumn) {
+  const card = state.cards.find(c => c.id === id);
+  if (!card || card.column === newColumn) return;
+  const old = card.column;
+  card.column = newColumn;
+  updateState();
+  renderBoard();
+  if (newColumn === 'Done') triggerConfetti();
+}
+
+/* ---------- Rendering the board ---------- */
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = ''; // clear
+
+  COLUMN_NAMES.forEach((name, idx) => {
+    const colEl = createColumn(name, idx);
+    // Append cards belonging to this column
+    state.cards
+      .filter(c => c.column === name)
+      .forEach(card => colEl.querySelector('div.flex-1').appendChild(createCardElement(card)));
+    board.appendChild(colEl);
+  });
+}
+
+/* ---------- Initial render ---------- */
+renderBoard();
+</script>
+</body>
+</html>

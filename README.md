@@ -1,40 +1,42 @@
-**LM Studio Model Benchmark**
+**Model Benchmark for LM Studio and OpenRouter**
 
-This script benchmarks all locally installed LM Studio models by:
-- Loading each model via the `lms` CLI and timing model load.
-- Generating a small website (HTML) from a fixed prompt.
-- Sampling CPU/GPU power (W) using `powermetrics` (or optional `asitop_csv_logger`).
-- Tracking RAM high‑water marks for the system and LM Studio processes.
-- Saving the generated HTML per model and a JSON with metrics (tokens/sec, load time, etc.).
+This project provides scripts to benchmark LLMs from two sources:
+1.  **Local models** via LM Studio.
+2.  **API-based models** via OpenRouter.
 
-Output is written under `reports/lmstudio-bench-YYYYMMDD-HHMMSS/`.
+Key features:
+- **LM Studio:** Loads each model, times the load, generates a small website, and measures power/memory usage.
+- **OpenRouter:** Queries specified models, records generation time, tokens/sec, and cost.
+- Both produce detailed JSON metrics and save generated artifacts.
+
+Output is written to a timestamped folder, e.g., `reports/lmstudio-bench-YYYYMMDD-HHMMSS/`.
 
 **Requirements**
-- macOS with `powermetrics` (built into macOS).
-- LM Studio (0.3.6+ recommended) with local server enabled and the `lms` CLI available on PATH.
-- Python 3.9+ with packages: `requests`, `psutil`.
-- Optional: `asitop_csv_logger` (if you prefer that to `powermetrics`).
-
-Install Python deps:
-- `python3 -m pip install -r requirements.txt`
-
-Enable the LM Studio CLI and server:
-- In LM Studio: Settings → Developer → Enable Local Server (accept EULA).
-- Ensure `lms` is on your PATH (LM Studio can install or you can symlink it).
-- Verify with: `lms --version` and `lms server start`.
+- **General:** Python 3.9+ (`python3 -m pip install -r requirements.txt`).
+- **LM Studio Benchmarking:**
+  - macOS with `powermetrics` (built-in).
+  - LM Studio (0.3.6+ recommended) with the `lms` CLI installed and local server enabled.
+  - Sudo access for power sampling (`sudo -E python3 ...`).
+- **OpenRouter Benchmarking:**
+  - An OpenRouter API key. Set it as an environment variable: `export OPENROUTER_API_KEY="your-key-here"`.
 
 Permissions for power metrics:
 - `powermetrics` typically requires admin privileges. The simplest way is to run the script with sudo: `sudo -E python3 bench_lmstudio_models.py`.
 - If you run without sudo, the script still runs but CPU/GPU power stats may be empty.
 - Optional alternative: install and use `asitop_csv_logger` and set `USE_ASITOP_CSV = True` in the script.
 
-**Run**
-- `python3 bench_lmstudio_models.py` (or `sudo -E python3 bench_lmstudio_models.py` to capture power).
+**Run Benchmarks**
 
-The script will:
-- Ensure the LM Studio server is running.
-- Enumerate installed local LLMs.
-- For each model: unload all, load the model (measure load time), start power + RAM sampling, call the LM Studio REST/OpenAI API once, stop samplers, save `MODEL.html`, `MODEL.json`, and a `MODEL_powermetrics.log`.
+**1. LM Studio (Local Models)**
+- Run with `sudo` to capture power metrics:
+  - `sudo -E python3 bench_lmstudio_models.py`
+- The script enumerates all local models, loads each one, measures performance, and saves artifacts.
+
+**2. OpenRouter (API Models)**
+- Create a text file (e.g., `models.txt`) with a list of model names, one per line.
+- Run the script, optionally adjusting concurrency:
+  - `python3 bench_openrouter_models.py models.txt --concurrency 8`
+- It queries models in parallel (default: 4), recording performance and cost.
 
 **What gets recorded**
 - `MODEL.html`: Extracted HTML from the model’s response. If not detected, the full text is wrapped into a minimal HTML container.
@@ -50,16 +52,14 @@ The script will:
   - `prompt`: Includes temperature, top_p, max_tokens, gpu_setting, and the exact prompt text used.
 
 **Customizing**
-- Change the generation prompt by editing `PROMPT` near the top of `bench_lmstudio_models.py`.
-- By default, temperature and top_p are not set (the model/server defaults are used). Set `TEMP`/`TOP_P` if you want to override.
-- `MAX_TOKENS` is applied only if not `None`.
-- Set `GPU_SETTING` to control `lms load --gpu` behavior (e.g., `max`, `off`, or a number).
-- Set `USE_ASITOP_CSV = True` if you have `asitop_csv_logger` installed and prefer it.
+- **Prompts:** Edit the `PROMPT` variable in `bench_lmstudio_models.py` or `bench_openrouter_models.py`.
+- **Parameters:** Adjust `TEMP`, `TOP_P`, `MAX_TOKENS`, etc., at the top of each script.
+- **LM Studio:** `GPU_SETTING` controls GPU offload (`max`, `off`). `USE_ASITOP_CSV` offers an alternative to `powermetrics`.
 
 **Build a Report**
-- Generate an interactive HTML report from a run’s folder of JSON files:
-  - `python3 build_bench_report.py lmstudio-bench-YYYYMMDD-HHMMSS --out report.html`
-  - Optional: `--prompt-file prompt.txt` to embed the prompt if not present in JSONs.
+- Generate an interactive HTML report from any run folder:
+  - `python3 build_bench_report.py reports/lmstudio-bench-YYYYMMDD-HHMMSS --out report.html`
+  - `python3 build_bench_report.py reports/openrouter-bench-YYYYMMDD-HHMMSS --out report.html`
 
 The report includes:
 - Sortable, filterable overview table with key metrics (load/gen time, tokens/sec, CPU/GPU/ANE power, memory deltas).

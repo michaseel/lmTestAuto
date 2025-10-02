@@ -16,7 +16,7 @@ Requirements:
 - Return only the complete self-contained HTML (script + styles included).
 - Modern, vibrant design, responsive layout, subtle CSS transitions.
 - Persist all data in localStorage under a unique namespace.
-- On first load, seed with 4 example consultants.
+- On first load, seed with 4 example consultants (from the german company INNOQ).
 
 Consultant Profile:
 - Name, Location, Short description

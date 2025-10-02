@@ -1,18 +1,18 @@
-# LM Studio Benchmark — Overview
+# Benchmark Overview
 
-This repository provides a repeatable way to benchmark local, open‑weight LLMs with LM Studio.
+This repository provides repeatable benchmarks for local and API-based LLMs.
 
-What it does
-- Iterates through all installed LLMs in LM Studio and benchmarks each one.
-- Measures: model load time, generation time, tokens/sec, RAM deltas, CPU/GPU/ANE power.
-- Extracts HTML from the response (ignores chain‑of‑thought `<think>…</think>` blocks) and saves artifacts.
-- Writes a per‑model JSON with metrics and metadata.
-- Builds a self‑contained, interactive HTML report with sortable/filterable tables and charts.
+**What it does**
+- **Local (LM Studio):** Iterates through installed models, measuring load time, generation speed, power, and memory.
+- **Remote (OpenRouter):** Queries API-based models, measuring generation speed and cost.
+- Both workflows extract HTML from responses, save artifacts, and generate detailed JSON metrics.
+- A final script builds a self-contained, interactive HTML report from the collected data.
 
-Key components
-- `bench_lmstudio_models.py` — main orchestrator for loading, generating, sampling, and saving.
-- `build_bench_report.py` — aggregates per‑model JSON data and produces a shareable report.
-- `test_power_monitor.py` — minimal standalone power sampling verifier for macOS.
+**Key Components**
+- `bench_lmstudio_models.py`: Orchestrates local model benchmarking.
+- `bench_openrouter_models.py`: Orchestrates API model benchmarking.
+- `build_bench_report.py`: Aggregates JSON data from any run into a shareable HTML report.
+- `test_power_monitor.py`: A simple utility to verify power sampling on macOS.
 
 Highlights
 - Robust model loading: maps REST API model IDs to the proper CLI load keys with sensible fallbacks.

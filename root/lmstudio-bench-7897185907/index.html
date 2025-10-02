@@ -1,0 +1,293 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LM Studio Bench Report</title>
+  <style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;line-height:1.35;margin:20px;color:#111}
+h1{margin:0 0 8px 0}
+.muted{color:#666}
+table{border-collapse:collapse;width:100%;margin-top:12px}
+th,td{border-bottom:1px solid #eee;padding:8px 10px;text-align:left}
+th{cursor:pointer;user-select:none;background:#fafafa;position:sticky;top:0}
+tr:hover{background:#fcfcfc}
+.tag{display:inline-block;padding:2px 6px;border-radius:6px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:12px;color:#0f172a}
+.toolbar{display:flex;gap:12px;align-items:center;margin:8px 0 4px}
+input[type="search"]{padding:6px 8px;border:1px solid #ddd;border-radius:6px;min-width:280px}
+.small{font-size:12px}
+details{margin:4px 0}
+code{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:1px 4px}
+.nowrap{white-space:nowrap}
+.cols{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.cols label{display:flex;align-items:center;gap:6px;border:1px solid #e2e8f0;padding:4px 8px;border-radius:8px;background:#f8fafc}
+.hidden{display:none}
+</style>
+</head>
+<body>
+  <h1>LM Studio Bench Report</h1>
+  <div class="muted small">Generated from 15 result files.</div>
+  <details>
+    <summary><strong>Prompt, Machine & Run Info</strong> (click to expand)</summary>
+    <div id="summary" style="margin:8px 0"></div>
+    <pre style='white-space:pre-wrap'>Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).
+
+Requirements:
+- Columns: Backlog, In Progress, Review, Done.
+- Cards must be:
+  - draggable across columns,
+  - editable in place,
+  - persisted in localStorage (state survives reloads) - please use your own namespace,
+  - deletable with a confirmation prompt.
+- Each column provides an “Add card” action.
+- Style with Tailwind via CDN.
+- Add subtle CSS transitions and trigger a confetti animation when a card moves to “Done”.
+- Thoroughly comment the code.
+- dont use window.alert or window.prompt to add/edit/delete cards
+- if there are no cards yet, create some dummy cards
+- modern and vibrant design
+
+As answer return the plain HTML of the working application (script and styles included)
+</pre>
+  </details>
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="Filter by model name">
+    <div class="small muted">Rows: <span id="count"></span></div>
+  </div>
+  <div id="col-toggles" class="cols small"></div>
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th class="col-model" data-key="model">Model</th>
+        <th class="col-timestamp" data-key="timestamp">Timestamp</th>
+        <th class="col-settings" data-key="settings">Settings</th>
+        <th class="col-load_time_seconds" data-key="load_time_seconds">Load s</th>
+        <th class="col-generation_time_seconds" data-key="generation_time_seconds">Gen s</th>
+        <th class="col-tokens_per_second" data-key="tokens_per_second">Tok/s</th>
+        <th class="col-prompt_tokens" data-key="prompt_tokens">Prompt tok</th>
+        <th class="col-completion_tokens" data-key="completion_tokens">Compl tok</th>
+        <th class="col-total_tokens" data-key="total_tokens">Total tok</th>
+        <th class="col-model_size" data-key="model_size">Model size</th>
+        <th class="col-quantization" data-key="quantization">Quantization</th>
+        <th class="col-cpu_w_avg" data-key="cpu_w_avg">CPU W(avg)</th>
+        <th class="col-gpu_w_avg" data-key="gpu_w_avg">GPU W(avg)</th>
+        <th class="col-gpu_w_max" data-key="gpu_w_max">GPU W(peak)</th>
+        <th class="col-gpu_w_min" data-key="gpu_w_min">GPU W(low)</th>
+        <th class="col-ane_w_avg" data-key="ane_w_avg">ANE W(avg)</th>
+        <th class="col-mem_after_load_lms" data-key="mem_after_load_lms">LM RSS Δ load</th>
+        <th class="col-mem_after_gen_lms" data-key="mem_after_gen_lms">LM RSS Δ gen</th>
+        <th class="col-artifacts" data-key="artifacts">Artifacts</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Charts</h2>
+  <div class="small muted">Quick visualizations (auto from data below)</div>
+  <div style="max-width:100%;">
+    <canvas id="chart_tps_gpu" width="900" height="360" style="width:100%;max-width:100%;"></canvas>
+  </div>
+  <div style="height:8px"></div>
+  <div style="max-width:100%;">
+    <canvas id="chart_times" width="900" height="480" style="width:100%;max-width:100%;"></canvas>
+  </div>
+
+  <script>
+  
+const DATA = [{"model": "baidu/ernie-4.5-21b-a3b", "timestamp": "2025-09-18T10:38:35.165723", "load_time_seconds": 4.056518040975789, "generation_time_seconds": 27.799290249997284, "tokens_per_second": 111.3761932433964, "prompt_tokens": 217, "completion_tokens": 3059, "total_tokens": 3276, "cpu_w_avg": 9.580884615384615, "cpu_w_max": 23.601, "gpu_w_avg": 17.61273076923077, "gpu_w_max": 21.939, "gpu_w_min": 9.317, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 12827377664, "mem_after_gen_lms": 12844531712, "mem_after_gen_vs_load_lms": 17154048, "mem_after_load_sys": 12838387712, "mem_after_gen_sys": 13142409216, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/baidu_ernie-4.5-21b-a3b.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/baidu_ernie-4.5-21b-a3b_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/baidu_ernie-4.5-21b-a3b.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/baidu_ernie-4.5-21b-a3b.txt", "model_size": null, "quantization": "4bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/baidu_ernie-4.5-21b-a3b.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/baidu_ernie-4.5-21b-a3b_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/baidu_ernie-4.5-21b-a3b.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/baidu_ernie-4.5-21b-a3b.txt"}, {"model": "ernie-4.5-21b-a3b-mlx@8bit", "timestamp": "2025-09-18T10:34:54.196895", "load_time_seconds": 5.682582124980399, "generation_time_seconds": 36.83145816702745, "tokens_per_second": 77.8826707537815, "prompt_tokens": 217, "completion_tokens": 2833, "total_tokens": 3050, "cpu_w_avg": 9.10975, "cpu_w_max": 16.225, "gpu_w_avg": 18.364250000000002, "gpu_w_max": 20.779, "gpu_w_min": 4.199, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 23740596224, "mem_after_gen_lms": 23501946880, "mem_after_gen_vs_load_lms": -238649344, "mem_after_load_sys": 21137129472, "mem_after_gen_sys": 23569874944, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/ernie-4.5-21b-a3b-mlx_8bit.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/ernie-4.5-21b-a3b-mlx_8bit_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/ernie-4.5-21b-a3b-mlx_8bit.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/ernie-4.5-21b-a3b-mlx_8bit.txt", "model_size": null, "quantization": "8bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/ernie-4.5-21b-a3b-mlx_8bit.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/ernie-4.5-21b-a3b-mlx_8bit_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/ernie-4.5-21b-a3b-mlx_8bit.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/ernie-4.5-21b-a3b-mlx_8bit.txt"}, {"model": "glm-4.5-air-mlx@4bit", "timestamp": "2025-09-18T10:47:08.423310", "load_time_seconds": 12.121937041985802, "generation_time_seconds": 145.5928034579847, "tokens_per_second": 38.15683141216781, "prompt_tokens": 191, "completion_tokens": 5451, "total_tokens": 5642, "cpu_w_avg": 6.983566433566433, "cpu_w_max": 10.03, "gpu_w_avg": 30.274653846153843, "gpu_w_max": 35.924, "gpu_w_min": 0.622, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 48958832640, "mem_after_gen_lms": 48196599808, "mem_after_gen_vs_load_lms": -762232832, "mem_after_load_sys": 38509887488, "mem_after_gen_sys": 62397186048, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_4bit.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_4bit_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_4bit.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_4bit.txt", "model_size": null, "quantization": "4bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_4bit.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_4bit_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_4bit.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_4bit.txt"}, {"model": "glm-4.5-air-mlx@6bit", "timestamp": "2025-09-18T10:44:28.653990", "load_time_seconds": null, "generation_time_seconds": null, "tokens_per_second": null, "prompt_tokens": null, "completion_tokens": null, "total_tokens": null, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 360448, "mem_after_gen_lms": 4784128, "mem_after_gen_vs_load_lms": 4423680, "mem_after_load_sys": 88342528, "mem_after_gen_sys": 213483520, "errors": {"load": "load_failed: CalledProcessError: Command '['lms', 'load', 'lmstudio-community/GLM-4.5-AIR-MLX-6BIT', '--gpu', 'max', '-y']' returned non-zero exit status 1.", "generation": null}, "html_path": null, "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_6bit_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_6bit.json", "raw_text_path": null, "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": null, "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_6bit_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/glm-4.5-air-mlx_6bit.json", "text_url": null}, {"model": "mistralai/devstral-small-2507", "timestamp": "2025-09-18T10:36:08.542521", "load_time_seconds": 4.6098191250057425, "generation_time_seconds": 67.10993404101464, "tokens_per_second": 33.259819045892215, "prompt_tokens": 194, "completion_tokens": 2199, "total_tokens": 2393, "cpu_w_avg": 5.194454545454546, "cpu_w_max": 9.422, "gpu_w_avg": 34.409136363636364, "gpu_w_max": 37.034, "gpu_w_min": 0.556, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 14003503104, "mem_after_gen_lms": 14099611648, "mem_after_gen_vs_load_lms": 96108544, "mem_after_load_sys": 14235566080, "mem_after_gen_sys": 14572388352, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/mistralai_devstral-small-2507.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/mistralai_devstral-small-2507_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/mistralai_devstral-small-2507.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/mistralai_devstral-small-2507.txt", "model_size": null, "quantization": "4bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/mistralai_devstral-small-2507.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/mistralai_devstral-small-2507_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/mistralai_devstral-small-2507.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/mistralai_devstral-small-2507.txt"}, {"model": "openai/gpt-oss-120b", "timestamp": "2025-09-18T10:41:30.471649", "load_time_seconds": 35.86446991699631, "generation_time_seconds": 59.236780959006865, "tokens_per_second": 47.8761761811777, "prompt_tokens": 258, "completion_tokens": 2796, "total_tokens": 3054, "cpu_w_avg": 4.494224137931035, "cpu_w_max": 9.695, "gpu_w_avg": 30.897422413793105, "gpu_w_max": 33.481, "gpu_w_min": 7.742, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 63922454528, "mem_after_gen_lms": 63830999040, "mem_after_gen_vs_load_lms": -91455488, "mem_after_load_sys": 39920730112, "mem_after_gen_sys": 40989065216, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-120b.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-120b_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/openai_gpt-oss-120b.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-120b.txt", "model_size": null, "quantization": "MXFP4", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-120b.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-120b_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-120b.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-120b.txt"}, {"model": "openai/gpt-oss-20b", "timestamp": "2025-09-18T10:43:27.925475", "load_time_seconds": 6.634658499999205, "generation_time_seconds": 24.321178042009706, "tokens_per_second": 85.9449133816465, "prompt_tokens": 258, "completion_tokens": 2019, "total_tokens": 2277, "cpu_w_avg": 7.900083333333334, "cpu_w_max": 10.472, "gpu_w_avg": 25.712166666666665, "gpu_w_max": 27.632, "gpu_w_min": 1.311, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 23017390080, "mem_after_gen_lms": 23052271616, "mem_after_gen_vs_load_lms": 34881536, "mem_after_load_sys": 22985375744, "mem_after_gen_sys": 23579262976, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-20b.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-20b_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/openai_gpt-oss-20b.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-20b.txt", "model_size": null, "quantization": "8bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-20b.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-20b_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-20b.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/openai_gpt-oss-20b.txt"}, {"model": "qwen3-coder-30b-a3b-instruct-mlx@6bit", "timestamp": "2025-09-18T10:39:53.130120", "load_time_seconds": 6.154718916979618, "generation_time_seconds": 69.96201541702612, "tokens_per_second": 79.22680930340493, "prompt_tokens": 197, "completion_tokens": 5503, "total_tokens": 5700, "cpu_w_avg": 8.388294117647058, "cpu_w_max": 11.794, "gpu_w_avg": 25.039058823529412, "gpu_w_max": 30.878, "gpu_w_min": 10.694, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 25454051328, "mem_after_gen_lms": 25551634432, "mem_after_gen_vs_load_lms": 97583104, "mem_after_load_sys": 17689247744, "mem_after_gen_sys": 25544622080, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_6bit.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_6bit_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_6bit.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_6bit.txt", "model_size": null, "quantization": "6bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_6bit.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_6bit_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_6bit.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_6bit.txt"}, {"model": "qwen3-coder-30b-a3b-instruct-mlx@8bit", "timestamp": "2025-09-18T10:42:54.306912", "load_time_seconds": 8.157175166998059, "generation_time_seconds": 66.43476412500604, "tokens_per_second": 71.3596442288242, "prompt_tokens": 197, "completion_tokens": 4708, "total_tokens": 4905, "cpu_w_avg": 8.818707692307692, "cpu_w_max": 11.33, "gpu_w_avg": 23.037407692307692, "gpu_w_max": 26.917, "gpu_w_min": 6.401, "ane_w_avg": 0.0001076923076923077, "ane_w_max": 0.002, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 33008500736, "mem_after_gen_lms": 33052278784, "mem_after_gen_vs_load_lms": 43778048, "mem_after_load_sys": 40446885888, "mem_after_gen_sys": 40973959168, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_8bit.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_8bit_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_8bit.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_8bit.txt", "model_size": null, "quantization": "8bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_8bit.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_8bit_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_8bit.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-coder-30b-a3b-instruct-mlx_8bit.txt"}, {"model": "qwen3-next-80b-a3b-instruct-mlx@8bit", "timestamp": "2025-09-18T14:18:35.910144", "load_time_seconds": 18.16505412501283, "generation_time_seconds": 85.85927950000041, "tokens_per_second": 52.27838109400337, "prompt_tokens": 197, "completion_tokens": 4047, "total_tokens": 4244, "cpu_w_avg": 8.210734939759035, "cpu_w_max": 11.113, "gpu_w_avg": 10.506698795180723, "gpu_w_max": 12.862, "gpu_w_min": 1.356, "ane_w_avg": 0.3924216867469879, "ane_w_max": 0.553, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 20981481472, "mem_after_gen_lms": 19473121280, "mem_after_gen_vs_load_lms": -1508360192, "mem_after_load_sys": 77074710528, "mem_after_gen_sys": 87849648128, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-next-80b-a3b-instruct-mlx_8bit.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-next-80b-a3b-instruct-mlx_8bit_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/qwen3-next-80b-a3b-instruct-mlx_8bit.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-next-80b-a3b-instruct-mlx_8bit.txt", "model_size": null, "quantization": "8bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-next-80b-a3b-instruct-mlx_8bit.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-next-80b-a3b-instruct-mlx_8bit_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-next-80b-a3b-instruct-mlx_8bit.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen3-next-80b-a3b-instruct-mlx_8bit.txt"}, {"model": "qwen/qwen2.5-coder-14b", "timestamp": "2025-09-18T10:34:09.204192", "load_time_seconds": 4.265563791006571, "generation_time_seconds": 32.94609420900815, "tokens_per_second": 50.325871343375944, "prompt_tokens": 197, "completion_tokens": 1620, "total_tokens": 1817, "cpu_w_avg": 5.724125, "cpu_w_max": 9.231, "gpu_w_avg": 31.824875, "gpu_w_max": 33.607, "gpu_w_min": 16.552, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 9007874048, "mem_after_gen_lms": 9032728576, "mem_after_gen_vs_load_lms": 24854528, "mem_after_load_sys": 8536293376, "mem_after_gen_sys": 10818912256, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen2.5-coder-14b.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen2.5-coder-14b_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/qwen_qwen2.5-coder-14b.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen2.5-coder-14b.txt", "model_size": null, "quantization": "4bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen2.5-coder-14b.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen2.5-coder-14b_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen2.5-coder-14b.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen2.5-coder-14b.txt"}, {"model": "qwen/qwen3-30b-a3b-2507", "timestamp": "2025-09-18T10:52:16.179079", "load_time_seconds": 5.740756124985637, "generation_time_seconds": null, "tokens_per_second": null, "prompt_tokens": null, "completion_tokens": null, "total_tokens": null, "cpu_w_avg": 7.266109215017064, "cpu_w_max": 15.219, "gpu_w_avg": 22.692087030716724, "gpu_w_max": 28.872, "gpu_w_min": 17.46, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 17824890880, "mem_after_gen_lms": 17868423168, "mem_after_gen_vs_load_lms": 43532288, "mem_after_load_sys": 18561810432, "mem_after_gen_sys": 21073379328, "errors": {"load": null, "generation": "generation_failed: ReadTimeout: HTTPConnectionPool(host='127.0.0.1', port=1234): Read timed out. (read timeout=300)"}, "html_path": null, "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-30b-a3b-2507_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/qwen_qwen3-30b-a3b-2507.json", "raw_text_path": null, "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": null, "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-30b-a3b-2507_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-30b-a3b-2507.json", "text_url": null}, {"model": "qwen/qwen3-4b-thinking-2507", "timestamp": "2025-09-18T10:38:02.320480", "load_time_seconds": 2.761376583017409, "generation_time_seconds": 108.86591912500444, "tokens_per_second": 117.63586562518903, "prompt_tokens": 197, "completion_tokens": 12771, "total_tokens": 12968, "cpu_w_avg": 7.066327102803738, "cpu_w_max": 12.852, "gpu_w_avg": 32.9834906542056, "gpu_w_max": 35.602, "gpu_w_min": 0.556, "ane_w_avg": 0.017317757009345795, "ane_w_max": 0.979, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 2912010240, "mem_after_gen_lms": 2954575872, "mem_after_gen_vs_load_lms": 42565632, "mem_after_load_sys": 2911322112, "mem_after_gen_sys": 6855229440, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-4b-thinking-2507.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-4b-thinking-2507_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/qwen_qwen3-4b-thinking-2507.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-4b-thinking-2507.txt", "model_size": null, "quantization": "4bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-4b-thinking-2507.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-4b-thinking-2507_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-4b-thinking-2507.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-4b-thinking-2507.txt"}, {"model": "qwen/qwen3-coder-30b", "timestamp": "2025-09-18T10:44:26.204431", "load_time_seconds": 5.3528220420121215, "generation_time_seconds": 51.01115670800209, "tokens_per_second": 94.44997510401473, "prompt_tokens": 197, "completion_tokens": 4786, "total_tokens": 4983, "cpu_w_avg": 8.8302, "cpu_w_max": 12.666, "gpu_w_avg": 23.174319999999998, "gpu_w_max": 28.162, "gpu_w_min": 4.527, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 17821401088, "mem_after_gen_lms": 17853808640, "mem_after_gen_vs_load_lms": 32407552, "mem_after_load_sys": 17597497344, "mem_after_gen_sys": 18691358720, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b.txt", "model_size": null, "quantization": "4bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-coder-30b.txt"}, {"model": "qwen/qwen3-next-80b", "timestamp": "2025-09-18T10:33:29.494121", "load_time_seconds": 7.446211874979781, "generation_time_seconds": 109.05572766700061, "tokens_per_second": 59.28109028665402, "prompt_tokens": 197, "completion_tokens": 6342, "total_tokens": 6539, "cpu_w_avg": 8.636710280373832, "cpu_w_max": 13.363, "gpu_w_avg": 4.380827102803738, "gpu_w_max": 8.093, "gpu_w_min": 0.343, "ane_w_avg": 0.0, "ane_w_max": 0.0, "samplers": "cpu_power,gpu_power,ane_power", "mem_after_load_lms": 41621176320, "mem_after_gen_lms": 41317302272, "mem_after_gen_vs_load_lms": -303874048, "mem_after_load_sys": 25444319232, "mem_after_gen_sys": 46998274048, "errors": {"load": null, "generation": null}, "html_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-next-80b.html", "log_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-next-80b_powermetrics.log", "raw_json_path": "reports/lmstudio-bench-7897185907/qwen_qwen3-next-80b.json", "raw_text_path": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-next-80b.txt", "model_size": null, "quantization": "4bit", "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": 16384, "gpu_setting": "max"}, "html_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-next-80b.html", "log_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-next-80b_powermetrics.log", "json_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-next-80b.json", "text_url": "file:///Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/qwen_qwen3-next-80b.txt"}];
+const SUMMARY = {"models": 15, "total_generation_time_seconds": 885.0264016680885, "avg_generation_time_seconds": 59.001760111205904, "machine": {"cpu": "Apple M4 Max", "gpu": "Apple M4 Max", "ram_bytes": 137438953472}};
+
+let sortKey = 'model';
+let sortDir = 1; // 1 asc, -1 desc
+
+function num(v){ return (v===null||v===undefined||v==='-'||v==='')?null:Number(v); }
+
+function formatBytes(b){
+  if (b==null) return '-';
+  const abs = Math.abs(b);
+  const sign = b < 0 ? '-' : '';
+  if (abs < 1024) return sign + abs + ' B';
+  const units=['KB','MB','GB','TB'];
+  let u=-1; let v=abs;
+  do{ v/=1024; u++; }while(v>=1024&&u<units.length-1);
+  return sign + v.toFixed(2)+' '+units[u];
+}
+
+function render(){
+  const q = document.querySelector('#search').value.toLowerCase();
+  const tbody = document.querySelector('#tbl tbody');
+  tbody.innerHTML='';
+  let rows = DATA.slice();
+  rows.sort((a,b)=>{
+    const av=a[sortKey], bv=b[sortKey];
+    const an = num(av), bn = num(bv);
+    if(an!=null && bn!=null){ return (an-bn)*sortDir; }
+    return String(av||'').localeCompare(String(bv||''))*sortDir;
+  });
+  for(const r of rows){
+    if(q && !(String(r.model).toLowerCase().includes(q))) continue;
+    const tr = document.createElement('tr');
+    const linkHtml = r.html_path ? `<a href="${r.html_url}" target="_blank">HTML</a>` : '<span class="muted">n/a</span>';
+    const linkText = r.raw_text_path ? `<a href="${r.text_url}" target="_blank">Text</a>` : '<span class="muted">n/a</span>';
+    tr.innerHTML = `
+      <td class="col-model nowrap">${r.model || '-'}</td>
+      <td class="col-timestamp">${r.timestamp ? new Date(r.timestamp).toLocaleString() : '-'}</td>
+      <td class="col-settings nowrap">${r.settings.gpu_setting?`<span class="tag">gpu:${r.settings.gpu_setting}</span>`:''} <span class="tag">T=${r.settings.temperature ?? '-'}</span> <span class="tag">p=${r.settings.top_p ?? '-'}</span></td>
+      <td class="col-load_time_seconds">${r.load_time_seconds?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-generation_time_seconds">${r.generation_time_seconds?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-tokens_per_second">${r.tokens_per_second?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-prompt_tokens">${r.prompt_tokens ?? '-'}</td>
+      <td class="col-completion_tokens">${r.completion_tokens ?? '-'}</td>
+      <td class="col-total_tokens">${r.total_tokens ?? '-'}</td>
+      <td class="col-model_size">${r.model_size ?? '-'}</td>
+      <td class="col-quantization">${r.quantization ?? '-'}</td>
+      <td class="col-cpu_w_avg">${r.cpu_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_avg">${r.gpu_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_max">${r.gpu_w_max?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_min">${r.gpu_w_min?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-ane_w_avg">${r.ane_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-mem_after_load_lms">${formatBytes(r.mem_after_load_lms)}</td>
+      <td class="col-mem_after_gen_lms">${formatBytes(r.mem_after_gen_lms)}</td>
+      <td class="col-artifacts">${linkHtml} · ${linkText} · <a href="${r.json_url}" target="_blank">JSON</a></td>
+    `;
+    tbody.appendChild(tr);
+  }
+  document.querySelector('#count').textContent = rows.length;
+  applyColumnVisibility();
+}
+
+function setupSort(){
+  document.querySelectorAll('#tbl th').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const key = th.dataset.key;
+      if(!key) return;
+      if(sortKey===key){ sortDir*=-1; } else { sortKey=key; sortDir=1; }
+      render();
+    });
+  });
+}
+const DEFAULT_HIDDEN = new Set(["timestamp","settings","total_tokens","cpu_w_avg","ane_w_avg"]);
+
+function setupColumnToggles(){
+  const wrapper = document.querySelector('#col-toggles');
+  const cols = Array.from(document.querySelectorAll('#tbl th')).map(th=>({ key: th.dataset.key, label: th.textContent }));
+  for(const c of cols){
+    if(!c.key) continue;
+    const id = `col_${c.key}`;
+    const checked = !DEFAULT_HIDDEN.has(c.key);
+    const lab = document.createElement('label');
+    lab.innerHTML = `<input type="checkbox" id="${id}" ${checked?'checked':''}> ${c.label}`;
+    wrapper.appendChild(lab);
+    lab.querySelector('input').addEventListener('change', applyColumnVisibility);
+  }
+  applyColumnVisibility();
+}
+
+function applyColumnVisibility(){
+  const checks = Array.from(document.querySelectorAll('#col-toggles input[type="checkbox"]'));
+  const visible = new Set(checks.filter(c=>c.checked).map(c=>c.id.replace('col_','')));
+  const controllable = new Set(Array.from(checks).map(c=>c.id.replace('col_','')));
+  document.querySelectorAll('#tbl th').forEach(th=>{
+    const key = th.dataset.key;
+    if(!key) return;
+    th.classList.toggle('hidden', !visible.has(key));
+  });
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+    Array.from(tr.children).forEach(td=>{
+      const m = td.className.match(/col-([A-Za-z0-9_.-]+)/);
+      if(!m) return;
+      const key = m[1];
+      if(!controllable.has(key)) return;
+      td.classList.toggle('hidden', !visible.has(key));
+    });
+  });
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setupSort();
+  setupColumnToggles();
+  document.querySelector('#search').addEventListener('input', render);
+  // Fill summary
+  if(SUMMARY){
+    const el = document.querySelector('#summary');
+    const ram = SUMMARY.machine.ram_bytes;
+    const ramStr = ram? (ram/1073741824).toFixed(1)+' GB' : '-';
+    el.innerHTML = `<div class="small"><strong>Machine:</strong> CPU: ${SUMMARY.machine.cpu || '-'} · GPU: ${SUMMARY.machine.gpu || '-'} · RAM: ${ramStr}<br><strong>Models:</strong> ${SUMMARY.models} · <strong>Total gen time:</strong> ${(SUMMARY.total_generation_time_seconds||0).toFixed(2)} s · <strong>Avg gen time:</strong> ${SUMMARY.avg_generation_time_seconds?SUMMARY.avg_generation_time_seconds.toFixed(2):'-'} s</div>`;
+  }
+  render();
+  drawCharts();
+});
+
+function drawCharts(){
+  try{ drawScatterTPSvsGPU(); }catch(e){ console.warn('scatter failed', e); }
+  try{ drawBarsTimes(); }catch(e){ console.warn('bars failed', e); }
+}
+
+function drawScatterTPSvsGPU(){
+  const canvas = document.getElementById('chart_tps_gpu');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const data = DATA.filter(d=> num(d.tokens_per_second)!=null && num(d.gpu_w_avg)!=null);
+  const pad = 40; const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if(data.length===0){ ctx.fillText('No data for TPS vs GPU (avg W)', 10, 20); return; }
+  const xs = data.map(d=>num(d.gpu_w_avg));
+  const ys = data.map(d=>num(d.tokens_per_second));
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = 0, yMax = Math.max(...ys)*1.1;
+  const xScale = v => pad + (W-2*pad) * ((v - xMin) / (xMax - xMin || 1));
+  const yScale = v => H - pad - (H-2*pad) * ((v - yMin) / (yMax - yMin || 1));
+  // axes
+  ctx.strokeStyle = '#ccc';
+  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '12px system-ui';
+  ctx.fillText('GPU avg W', W/2 - 30, H - 10);
+  ctx.save(); ctx.translate(12, H/2); ctx.rotate(-Math.PI/2); ctx.fillText('Tokens/sec', 0, 0); ctx.restore();
+  // points
+  for(const d of data){
+    const x = xScale(num(d.gpu_w_avg));
+    const y = yScale(num(d.tokens_per_second));
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+  }
+  // labels (truncated)
+  ctx.fillStyle = '#555';
+  for(const d of data){
+    const x = xScale(num(d.gpu_w_avg));
+    const y = yScale(num(d.tokens_per_second));
+    const label = String(d.model).slice(0, 18);
+    ctx.fillText(label, x+6, y-6);
+  }
+}
+
+function drawBarsTimes(){
+  const canvas = document.getElementById('chart_times');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const data = DATA.filter(d=> num(d.generation_time_seconds)!=null).slice().sort((a,b)=>num(b.generation_time_seconds)-num(a.generation_time_seconds)).slice(0,20);
+  const pad = 60; const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if(data.length===0){ ctx.fillText('No generation time data', 10, 20); return; }
+  const xs = data.map(d=>num(d.generation_time_seconds));
+  const xMax = Math.max(...xs) * 1.1; const xMin = 0;
+  const barH = (H-2*pad) / data.length;
+  const xScale = v => pad + (W-2*pad) * ((v - xMin) / (xMax - xMin || 1));
+  // axes
+  ctx.strokeStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '12px system-ui'; ctx.fillText('Generation time (s)', W/2 - 50, H - 10);
+  // bars
+  data.forEach((d,i)=>{
+    const y = pad + i*barH + 2;
+    const w = xScale(num(d.generation_time_seconds)) - pad;
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(pad, y, w, barH-4);
+    ctx.fillStyle = '#111';
+    const label = `${String(d.model).slice(0,18)}  ${num(d.generation_time_seconds).toFixed(1)}s`;
+    ctx.fillText(label, pad+4, y + barH/2 + 4);
+  });
+}
+
+  </script>
+</body>
+</html>

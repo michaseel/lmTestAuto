@@ -1,0 +1,312 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="5">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenRouter Benchmark Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: sans-serif; }
+        .table-container { margin: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f4f4f4; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-4">OpenRouter Benchmark Report</h1>
+        <div id="prompt" class="mb-4 p-4 bg-gray-100 border rounded-md">
+            <h2 class="font-semibold">Prompt:</h2>
+            <pre class="whitespace-pre-wrap">Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).
+
+Requirements:
+- Columns: Backlog, In Progress, Review, Done.
+- Cards must be:
+  - draggable across columns,
+  - editable in place,
+  - persisted in localStorage (state survives reloads) - please use your own namespace,
+  - deletable with a confirmation prompt.
+- Each column provides an “Add card” action.
+- Style with Tailwind via CDN.
+- Add subtle CSS transitions and trigger a confetti animation when a card moves to “Done”.
+- Thoroughly comment the code.
+- dont use window.alert or window.prompt to add/edit/delete cards
+- if there are no cards yet, create some dummy cards
+- modern and vibrant design
+
+As answer return the plain HTML of the working application (script and styles included)
+</pre>
+        </div>
+        <div id="report-table" class="overflow-x-auto">
+            <table class="table-auto w-full">
+        <thead class="bg-gray-200">
+            <tr>
+                <th class="px-4 py-2">Model</th>
+                <th class="px-4 py-2">Time (s)</th>
+                <th class="px-4 py-2">Tokens/s</th>
+                <th class="px-4 py-2">Cost ($)</th>
+                <th class="px-4 py-2">Prompt Tokens</th>
+                <th class="px-4 py-2">Completion Tokens</th>
+                <th class="px-4 py-2">Output</th>
+            </tr>
+        </thead>
+        <tbody>
+    
+            <tr class="border-t">
+                <td class="border px-4 py-2">anthropic/claude-3.7-sonnet</td>
+                <td class="border px-4 py-2">78.15</td>
+                <td class="border px-4 py-2">83.87</td>
+                <td class="border px-4 py-2">0.0990</td>
+                <td class="border px-4 py-2">218</td>
+                <td class="border px-4 py-2">6554</td>
+                <td class="border px-4 py-2"><a href="anthropic_claude-3.7-sonnet.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">anthropic/claude-sonnet-4</td>
+                <td class="border px-4 py-2">85.91</td>
+                <td class="border px-4 py-2">92.50</td>
+                <td class="border px-4 py-2">0.1198</td>
+                <td class="border px-4 py-2">218</td>
+                <td class="border px-4 py-2">7946</td>
+                <td class="border px-4 py-2"><a href="anthropic_claude-sonnet-4.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">anthropic/claude-sonnet-4.5</td>
+                <td class="border px-4 py-2">61.05</td>
+                <td class="border px-4 py-2">92.10</td>
+                <td class="border px-4 py-2">0.0850</td>
+                <td class="border px-4 py-2">217</td>
+                <td class="border px-4 py-2">5623</td>
+                <td class="border px-4 py-2"><a href="anthropic_claude-sonnet-4.5.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">deepseek/deepseek-chat-v3.1</td>
+                <td class="border px-4 py-2">133.72</td>
+                <td class="border px-4 py-2">28.61</td>
+                <td class="border px-4 py-2">0.0043</td>
+                <td class="border px-4 py-2">195</td>
+                <td class="border px-4 py-2">3825</td>
+                <td class="border px-4 py-2"><a href="deepseek_deepseek-chat-v3.1.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">deepseek/deepseek-v3-0324</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">0</td>
+                <td class="border px-4 py-2">0</td>
+                <td class="border px-4 py-2">N/A</td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">deepseek/deepseek-v3.1</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">0</td>
+                <td class="border px-4 py-2">0</td>
+                <td class="border px-4 py-2">N/A</td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">deepseek/deepseek-v3.2-exp</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">0</td>
+                <td class="border px-4 py-2">0</td>
+                <td class="border px-4 py-2">N/A</td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">google/gemini-2.0-flash</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">N/A</td>
+                <td class="border px-4 py-2">0</td>
+                <td class="border px-4 py-2">0</td>
+                <td class="border px-4 py-2">N/A</td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">google/gemini-2.5-flash</td>
+                <td class="border px-4 py-2">24.30</td>
+                <td class="border px-4 py-2">247.34</td>
+                <td class="border px-4 py-2">0.0151</td>
+                <td class="border px-4 py-2">199</td>
+                <td class="border px-4 py-2">6010</td>
+                <td class="border px-4 py-2"><a href="google_gemini-2.5-flash.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">google/gemini-2.5-flash-lite</td>
+                <td class="border px-4 py-2">17.34</td>
+                <td class="border px-4 py-2">338.68</td>
+                <td class="border px-4 py-2">0.0024</td>
+                <td class="border px-4 py-2">199</td>
+                <td class="border px-4 py-2">5872</td>
+                <td class="border px-4 py-2"><a href="google_gemini-2.5-flash-lite.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">google/gemini-2.5-flash-lite-preview-09-2025</td>
+                <td class="border px-4 py-2">10.92</td>
+                <td class="border px-4 py-2">532.09</td>
+                <td class="border px-4 py-2">0.0023</td>
+                <td class="border px-4 py-2">198</td>
+                <td class="border px-4 py-2">5811</td>
+                <td class="border px-4 py-2"><a href="google_gemini-2.5-flash-lite-preview-09-2025.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">google/gemini-2.5-pro</td>
+                <td class="border px-4 py-2">78.77</td>
+                <td class="border px-4 py-2">106.71</td>
+                <td class="border px-4 py-2">0.0843</td>
+                <td class="border px-4 py-2">199</td>
+                <td class="border px-4 py-2">8405</td>
+                <td class="border px-4 py-2"><a href="google_gemini-2.5-pro.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">openai/gpt-4.1-mini</td>
+                <td class="border px-4 py-2">76.41</td>
+                <td class="border px-4 py-2">63.24</td>
+                <td class="border px-4 py-2">0.0078</td>
+                <td class="border px-4 py-2">195</td>
+                <td class="border px-4 py-2">4832</td>
+                <td class="border px-4 py-2"><a href="openai_gpt-4.1-mini.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">openai/gpt-4o-mini</td>
+                <td class="border px-4 py-2">21.92</td>
+                <td class="border px-4 py-2">75.54</td>
+                <td class="border px-4 py-2">0.0010</td>
+                <td class="border px-4 py-2">195</td>
+                <td class="border px-4 py-2">1656</td>
+                <td class="border px-4 py-2"><a href="openai_gpt-4o-mini.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">openai/gpt-5</td>
+                <td class="border px-4 py-2">96.82</td>
+                <td class="border px-4 py-2">99.84</td>
+                <td class="border px-4 py-2">0.0969</td>
+                <td class="border px-4 py-2">194</td>
+                <td class="border px-4 py-2">9667</td>
+                <td class="border px-4 py-2"><a href="openai_gpt-5.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">openai/gpt-5-codex</td>
+                <td class="border px-4 py-2">304.15</td>
+                <td class="border px-4 py-2">61.27</td>
+                <td class="border px-4 py-2">0.1866</td>
+                <td class="border px-4 py-2">194</td>
+                <td class="border px-4 py-2">18636</td>
+                <td class="border px-4 py-2"><a href="openai_gpt-5-codex.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">openai/gpt-5-mini</td>
+                <td class="border px-4 py-2">126.82</td>
+                <td class="border px-4 py-2">62.95</td>
+                <td class="border px-4 py-2">0.0160</td>
+                <td class="border px-4 py-2">194</td>
+                <td class="border px-4 py-2">7983</td>
+                <td class="border px-4 py-2"><a href="openai_gpt-5-mini.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">openai/gpt-oss-120b</td>
+                <td class="border px-4 py-2">21.07</td>
+                <td class="border px-4 py-2">154.64</td>
+                <td class="border px-4 py-2">0.0020</td>
+                <td class="border px-4 py-2">259</td>
+                <td class="border px-4 py-2">3259</td>
+                <td class="border px-4 py-2"><a href="openai_gpt-oss-120b.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">qwen/qwen3-coder-flash</td>
+                <td class="border px-4 py-2">46.09</td>
+                <td class="border px-4 py-2">112.11</td>
+                <td class="border px-4 py-2">0.0078</td>
+                <td class="border px-4 py-2">197</td>
+                <td class="border px-4 py-2">5167</td>
+                <td class="border px-4 py-2"><a href="qwen_qwen3-coder-flash.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">qwen/qwen3-coder-plus</td>
+                <td class="border px-4 py-2">55.07</td>
+                <td class="border px-4 py-2">68.62</td>
+                <td class="border px-4 py-2">0.0191</td>
+                <td class="border px-4 py-2">197</td>
+                <td class="border px-4 py-2">3779</td>
+                <td class="border px-4 py-2"><a href="qwen_qwen3-coder-plus.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">qwen/qwen3-max</td>
+                <td class="border px-4 py-2">106.08</td>
+                <td class="border px-4 py-2">41.79</td>
+                <td class="border px-4 py-2">0.0268</td>
+                <td class="border px-4 py-2">197</td>
+                <td class="border px-4 py-2">4433</td>
+                <td class="border px-4 py-2"><a href="qwen_qwen3-max.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">x-ai/grok-4-fast</td>
+                <td class="border px-4 py-2">35.98</td>
+                <td class="border px-4 py-2">94.92</td>
+                <td class="border px-4 py-2">0.0018</td>
+                <td class="border px-4 py-2">300</td>
+                <td class="border px-4 py-2">3415</td>
+                <td class="border px-4 py-2"><a href="x-ai_grok-4-fast.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">x-ai/grok-code-fast-1</td>
+                <td class="border px-4 py-2">14.29</td>
+                <td class="border px-4 py-2">210.28</td>
+                <td class="border px-4 py-2">0.0046</td>
+                <td class="border px-4 py-2">387</td>
+                <td class="border px-4 py-2">3005</td>
+                <td class="border px-4 py-2"><a href="x-ai_grok-code-fast-1.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">z-ai/glm-4.5</td>
+                <td class="border px-4 py-2">84.52</td>
+                <td class="border px-4 py-2">48.46</td>
+                <td class="border px-4 py-2">0.0083</td>
+                <td class="border px-4 py-2">195</td>
+                <td class="border px-4 py-2">4096</td>
+                <td class="border px-4 py-2"><a href="z-ai_glm-4.5.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        
+            <tr class="border-t">
+                <td class="border px-4 py-2">z-ai/glm-4.6</td>
+                <td class="border px-4 py-2">250.28</td>
+                <td class="border px-4 py-2">20.98</td>
+                <td class="border px-4 py-2">0.0111</td>
+                <td class="border px-4 py-2">191</td>
+                <td class="border px-4 py-2">5250</td>
+                <td class="border px-4 py-2"><a href="z-ai_glm-4.6.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
+            </tr>
+        </tbody></table>
+        </div>
+        <p class="text-sm text-gray-500 mt-4">Last updated: 2025-10-01 13:34:32</p>
+    </div>
+</body>
+</html>

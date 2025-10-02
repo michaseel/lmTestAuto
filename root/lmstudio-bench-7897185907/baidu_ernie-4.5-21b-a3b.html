@@ -1,0 +1,246 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <!-- Tailwind CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Confetti animation */
+        @keyframes confetti {
+            0% { transform: translateY(-10vh) rotate(0deg); }
+            100% { transform: translateY(10vh) rotate(360deg); }
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background-color: #ff5733; /* Various colors for confetti */
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold text-center mb-8 text-purple-700">Kanban Board</h1>
+        
+        <div id="board" class="space-y-8">
+            <!-- Backlog Column -->
+            <div class="bg-white rounded-xl shadow-lg p-6" id="backlog">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Backlog</h2>
+                <div id="backlog-cards" class="space-y-4"></div>
+                <button 
+                    id="add-backlog-card" 
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded mt-4 transition duration-300"
+                >Add Card</button>
+            </div>
+
+            <!-- In Progress Column -->
+            <div class="bg-white rounded-xl shadow-lg p-6" id="inProgress">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">In Progress</h2>
+                <div id="inProgress-cards" class="space-y-4"></div>
+                <button 
+                    id="add-inProgress-card" 
+                    class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded mt-4 transition duration-300"
+                >Add Card</button>
+            </div>
+
+            <!-- Review Column -->
+            <div class="bg-white rounded-xl shadow-lg p-6" id="review">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Review</h2>
+                <div id="review-cards" class="space-y-4"></div>
+                <button 
+                    id="add-review-card" 
+                    class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded mt-4 transition duration-300"
+                >Add Card</button>
+            </div>
+
+            <!-- Done Column -->
+            <div class="bg-white rounded-xl shadow-lg p-6" id="done">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Done</h2>
+                <div id="done-cards" class="space-y-4"></div>
+                <button 
+                    id="add-done-card" 
+                    class="w-full bg-green-300 hover:bg-green-400 text-gray-800 py-2 px-4 rounded mt-4 transition duration-300"
+                >Add Card</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Namespace for localStorage data
+            const KANBAN_NAMESPACE = 'my-kanban-board';
+
+            // Initialize the board with dummy data if no existing data
+            if (!localStorage.getItem(KANBAN_NAMESPACE)) {
+                initializeDummyCards();
+            }
+
+            // Load existing data on page load
+            loadKanbanData();
+
+            // DOM elements for adding cards
+            const addBacklogCardBtn = document.getElementById('add-backlog-card');
+            const addInProgressCardBtn = document.getElementById('add-inProgress-card');
+            const addReviewCardBtn = document.getElementById('add-review-card');
+            const addDoneCardBtn = document.getElementById('add-done-card');
+
+            // Event listeners for adding cards
+            addBacklogCardBtn.addEventListener('click', () => addNewCard(0)); // 0 corresponds to Backlog
+            addInProgressCardBtn.addEventListener('click', () => addNewCard(1)); // 1 corresponds to In Progress
+            addReviewCardBtn.addEventListener('click', () => addNewCard(2)); // 2 corresponds to Review
+            addDoneCardBtn.addEventListener('click', () => addNewCard(3)); // 3 corresponds to Done
+
+            // Event listeners for dragging cards across columns
+            document.querySelectorAll('.card').forEach(card => {
+                // For each card, set up drag functionality
+                setupCardDrag(card);
+            });
+
+            // Function to add a new card with input prompts (no window.alert or .prompt)
+            function addNewCard(columnIndex) {
+                const title = prompt('Enter card title:');
+                if (title) {
+                    addCardToColumn(title, columnIndex);
+                }
+            }
+
+            // Function to add a card with default title if user cancels
+            function addCardToColumn(title, columnIndex) {
+                const cardsContainer = document.getElementById(`${['backlog', 'inProgress', 'review', 'done'][columnIndex]}-cards`);
+                const cardElement = createCardElement(title);
+                cardsContainer.appendChild(cardElement);
+                saveCardToLocalStorage(title, columnIndex);
+            }
+
+            // Function to create a card element with all the necessary data
+            function createCardElement(title) {
+                const card = document.createElement('div');
+                card.className = `card p-4 rounded-lg shadow-md transition duration-300 ${['backlog', 'inProgress', 'review', 'done'][columnIndex]}`;
+                card.dataset.title = title;
+                card.dataset.columnIndex = columnIndex;
+
+                // Add the card title
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'font-medium text-gray-800';
+                titleSpan.textContent = title;
+                card.appendChild(titleSpan);
+
+                // Add edit button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'text-blue-500 hover:text-blue-600 mt-2';
+                editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                editBtn.addEventListener('click', () => {
+                    const newTitle = prompt('Edit card title:', title);
+                    if (newTitle) {
+                        card.dataset.title = newTitle;
+                        titleSpan.textContent = newTitle;
+                        saveCardToLocalStorage(newTitle, columnIndex);
+                    }
+                });
+                card.appendChild(editBtn);
+
+                // Add delete button
+                const delBtn = document.createElement('button');
+                delBtn.className = 'text-red-500 hover:text-red-600 mt-2 ml-2';
+                delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                delBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent triggering the column's delete event
+                    if (confirm('Are you sure you want to delete this card?')) {
+                        cardsContainer.removeChild(card);
+                        saveCardToLocalStorage('', columnIndex); // Clear the card from localStorage
+                    }
+                });
+                card.appendChild(delBtn);
+
+                return card;
+            }
+
+            // Function to save a card's data to localStorage
+            function saveCardToLocalStorage(title, columnIndex) {
+                const cardsData = JSON.parse(localStorage.getItem(KANBAN_NAMESPACE) || '[]');
+                const cardIndex = cardsData.findIndex(card => card.title === title && card.columnIndex === columnIndex);
+                if (cardIndex !== -1) {
+                    cardsData[cardIndex].title = title; // Update existing card
+                } else {
+                    cardsData.push({ title, columnIndex }); // Add new card
+                }
+                localStorage.setItem(KANBAN_NAMESPACE, JSON.stringify(cardsData));
+            }
+
+            // Function to load cards from localStorage and populate the board
+            function loadKanbanData() {
+                const cardsData = JSON.parse(localStorage.getItem(KANBAN_NAMESPACE) || '[]');
+                cardsData.forEach(({ title, columnIndex }) => {
+                    const cardsContainer = document.getElementById(`${['backlog', 'inProgress', 'review', 'done'][columnIndex]}-cards`);
+                    const cardElement = createCardElement(title);
+                    cardsContainer.appendChild(cardElement);
+                });
+            }
+
+            // Function to initialize dummy cards if none exist in localStorage
+            function initializeDummyCards() {
+                const columns = ['backlog', 'inProgress', 'review', 'done'];
+                columns.forEach((col, index) => {
+                    const cardsContainer = document.getElementById(`${col}-cards`);
+                    for (let i = 1; i <= 3; i++) { // Initialize with some dummy cards
+                        const cardElement = createCardElement(`Dummy Card ${i}`);
+                        cardsContainer.appendChild(cardElement);
+                    }
+                });
+            }
+
+            // Function to setup card dragging functionality
+            function setupCardDrag(card) {
+                card.setAttribute('draggable', 'true');
+                card.addEventListener('dragstart', (e) => {
+                    // Set up data transfer object for the card's column index
+                    e.dataTransfer.setData('text/plain', card.dataset.columnIndex);
+                    // Add confetti effect when the card is dragged (for Done column)
+                    if (card.classList.contains('done')) {
+                        triggerConfettiAnimation();
+                    }
+                });
+            }
+
+            // Function to trigger the confetti animation when a card is moved to "Done"
+            function triggerConfettiAnimation() {
+                // Create confetti particles
+                for (let i = 0; i < 20; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = `${Math.random() * 100}vw`;
+                    confetti.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                    confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 50%)`;
+                    document.body.appendChild(confetti);
+
+                    // Remove confetti after animation completes
+                    setTimeout(() => {
+                        document.body.removeChild(confetti);
+                    }, parseInt(confetti.style.animationDuration) * 1000);
+                }
+            }
+
+            // Event listener for draggable cards to drop into another column
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+
+            document.addEventListener('drop', (e) => {
+                const columnIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                if (columnIndex !== undefined && !isNaN(columnIndex)) {
+                    const cardsContainer = document.getElementById(`${['backlog', 'inProgress', 'review', 'done'][columnIndex]}-cards`);
+                    const draggedCard = e.target.closest('.card'); // Find the card being dropped
+                    if (draggedCard) {
+                        cardsContainer.appendChild(draggedCard); // Drop the card into another column
+                        const newTitle = draggedCard.dataset.title; // Get the card's title
+                        const newColumnIndex = columnIndex; // Update its column index
+                        saveCardToLocalStorage(newTitle, newColumnIndex); // Save it in localStorage
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

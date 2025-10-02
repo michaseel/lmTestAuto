@@ -1,0 +1,518 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Kanban Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <style>
+        /* Custom styles for better visual appeal */
+        .kanban-column {
+            transition: all 0.3s ease;
+            min-height: 500px;
+        }
+        
+        .kanban-column:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .kanban-card {
+            transition: all 0.2s ease;
+            cursor: grab;
+        }
+        
+        .kanban-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .kanban-card:active {
+            cursor: grabbing;
+        }
+        
+        .drag-over {
+            background-color: rgba(96, 165, 250, 0.1);
+            border: 2px dashed #3b82f6;
+        }
+        
+        .edit-input {
+            transition: all 0.2s ease;
+        }
+        
+        .edit-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-purple-100 min-h-screen p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-indigo-800 mb-2">Modern Kanban Board</h1>
+            <p class="text-gray-600">Drag, edit, and organize your tasks efficiently</p>
+        </header>
+
+        <!-- Kanban Board -->
+        <div id="kanban-board" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Backlog Column -->
+            <div id="backlog" class="kanban-column bg-indigo-50 rounded-xl p-4 shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-indigo-700 flex items-center">
+                        <i class="fas fa-clipboard-list mr-2"></i> Backlog
+                    </h2>
+                    <span id="backlog-count" class="bg-indigo-100 text-indigo-800 rounded-full px-3 py-1 text-sm font-semibold">0</span>
+                </div>
+                <div id="backlog-cards" class="space-y-3 min-h-[100px]">
+                    <!-- Cards will be added here dynamically -->
+                </div>
+                <button id="add-backlog" class="w-full py-2 mt-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-plus mr-2"></i> Add Card
+                </button>
+            </div>
+
+            <!-- In Progress Column -->
+            <div id="in-progress" class="kanban-column bg-blue-50 rounded-xl p-4 shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-blue-700 flex items-center">
+                        <i class="fas fa-cogs mr-2"></i> In Progress
+                    </h2>
+                    <span id="in-progress-count" class="bg-blue-100 text-blue-800 rounded-full px-3 py-1 text-sm font-semibold">0</span>
+                </div>
+                <div id="in-progress-cards" class="space-y-3 min-h-[100px]">
+                    <!-- Cards will be added here dynamically -->
+                </div>
+                <button id="add-in-progress" class="w-full py-2 mt-3 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-plus mr-2"></i> Add Card
+                </button>
+            </div>
+
+            <!-- Review Column -->
+            <div id="review" class="kanban-column bg-amber-50 rounded-xl p-4 shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-amber-700 flex items-center">
+                        <i class="fas fa-eye mr-2"></i> Review
+                    </h2>
+                    <span id="review-count" class="bg-amber-100 text-amber-800 rounded-full px-3 py-1 text-sm font-semibold">0</span>
+                </div>
+                <div id="review-cards" class="space-y-3 min-h-[100px]">
+                    <!-- Cards will be added here dynamically -->
+                </div>
+                <button id="add-review" class="w-full py-2 mt-3 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-plus mr-2"></i> Add Card
+                </button>
+            </div>
+
+            <!-- Done Column -->
+            <div id="done" class="kanban-column bg-green-50 rounded-xl p-4 shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-green-700 flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i> Done
+                    </h2>
+                    <span id="done-count" class="bg-green-100 text-green-800 rounded-full px-3 py-1 text-sm font-semibold">0</span>
+                </div>
+                <div id="done-cards" class="space-y-3 min-h-[100px]">
+                    <!-- Cards will be added here dynamically -->
+                </div>
+                <button id="add-done" class="w-full py-2 mt-3 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-plus mr-2"></i> Add Card
+                </button>
+            </div>
+        </div>
+
+        <!-- Confetti Container -->
+        <div id="confetti-container" class="confetti-container"></div>
+    </div>
+
+    <script>
+        // Namespace for our Kanban application
+        const KanbanApp = {
+            // Column configuration with IDs and labels
+            columns: [
+                { id: 'backlog', label: 'Backlog' },
+                { id: 'in-progress', label: 'In Progress' },
+                { id: 'review', label: 'Review' },
+                { id: 'done', label: 'Done' }
+            ],
+            
+            // Card data structure
+            cards: [],
+            
+            // DOM elements cache
+            elements: {},
+            
+            // Initialize the application
+            init() {
+                this.cacheElements();
+                this.loadState();
+                this.renderCards();
+                this.updateColumnCounts();
+                this.bindEvents();
+                
+                // Add dummy cards if none exist
+                if (this.cards.length === 0) {
+                    this.addDummyCards();
+                }
+            },
+            
+            // Cache DOM elements for performance
+            cacheElements() {
+                this.elements = {
+                    board: document.getElementById('kanban-board'),
+                    confettiContainer: document.getElementById('confetti-container')
+                };
+                
+                // Cache column elements
+                this.columns.forEach(column => {
+                    this.elements[column.id] = document.getElementById(column.id);
+                    this.elements[`${column.id}-cards`] = document.getElementById(`${column.id}-cards`);
+                    this.elements[`${column.id}-count`] = document.getElementById(`${column.id}-count`);
+                    this.elements[`add-${column.id}`] = document.getElementById(`add-${column.id}`);
+                });
+            },
+            
+            // Load state from localStorage
+            loadState() {
+                const savedState = localStorage.getItem('kanbanAppState');
+                if (savedState) {
+                    try {
+                        const state = JSON.parse(savedState);
+                        this.cards = state.cards || [];
+                    } catch (e) {
+                        console.error('Failed to parse saved state:', e);
+                        this.cards = [];
+                    }
+                } else {
+                    // Initialize with default cards
+                    this.cards = [
+                        { id: '1', content: 'Design homepage layout', columnId: 'backlog' },
+                        { id: '2', content: 'Implement user authentication', columnId: 'backlog' },
+                        { id: '3', content: 'Create database schema', columnId: 'backlog' },
+                        { id: '4', content: 'Develop API endpoints', columnId: 'in-progress' },
+                        { id: '5', content: 'Write unit tests for components', columnId: 'in-progress' },
+                        { id: '6', content: 'Review UI design with stakeholders', columnId: 'review' },
+                        { id: '7', content: 'Fix critical bug in payment flow', columnId: 'done' },
+                        { id: '8', content: 'Deploy to production environment', columnId: 'done' }
+                    ];
+                }
+            },
+            
+            // Save state to localStorage
+            saveState() {
+                const state = { cards: this.cards };
+                localStorage.setItem('kanbanAppState', JSON.stringify(state));
+            },
+            
+            // Add dummy cards for initial state
+            addDummyCards() {
+                const dummyCards = [
+                    { id: '1', content: 'Research competitor products', columnId: 'backlog' },
+                    { id: '2', content: 'Create wireframes for dashboard', columnId: 'backlog' },
+                    { id: '3', content: 'Set up development environment', columnId: 'backlog' },
+                    { id: '4', content: 'Implement user registration flow', columnId: 'in-progress' },
+                    { id: '5', content: 'Design mobile responsive layout', columnId: 'in-progress' },
+                    { id: '6', content: 'Conduct usability testing session', columnId: 'review' },
+                    { id: '7', content: 'Update documentation for API changes', columnId: 'done' },
+                    { id: '8', content: 'Fix responsive issues on Safari', columnId: 'done' }
+                ];
+                
+                this.cards = dummyCards;
+                this.saveState();
+            },
+            
+            // Render all cards in their respective columns
+            renderCards() {
+                // Clear existing cards
+                this.columns.forEach(column => {
+                    const columnElement = this.elements[`${column.id}-cards`];
+                    columnElement.innerHTML = '';
+                });
+                
+                // Render each card
+                this.cards.forEach(card => {
+                    const cardElement = this.createCardElement(card);
+                    const columnCardsElement = this.elements[`${card.columnId}-cards`];
+                    if (columnCardsElement) {
+                        columnCardsElement.appendChild(cardElement);
+                    }
+                });
+            },
+            
+            // Create a card DOM element
+            createCardElement(card) {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'kanban-card bg-white rounded-lg p-4 shadow transition-all duration-200';
+                cardElement.draggable = true;
+                cardElement.dataset.cardId = card.id;
+                
+                // Add edit functionality
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'content';
+                contentDiv.textContent = card.content;
+                
+                // Add edit input (hidden by default)
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.className = 'edit-input w-full px-2 py-1 border rounded mb-2 hidden';
+                editInput.value = card.content;
+                
+                // Add action buttons
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex justify-between mt-2';
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'text-gray-500 hover:text-indigo-600 text-sm';
+                editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-gray-500 hover:text-red-600 text-sm';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Delete';
+                
+                // Append elements
+                actionsDiv.appendChild(editBtn);
+                actionsDiv.appendChild(deleteBtn);
+                cardElement.appendChild(contentDiv);
+                cardElement.appendChild(editInput);
+                cardElement.appendChild(actionsDiv);
+                
+                // Add event listeners
+                this.bindCardEvents(cardElement, card.id);
+                
+                return cardElement;
+            },
+            
+            // Bind events to a card element
+            bindCardEvents(cardElement, cardId) {
+                const contentDiv = cardElement.querySelector('.content');
+                const editInput = cardElement.querySelector('.edit-input');
+                const editBtn = cardElement.querySelector('.fa-edit').parentElement;
+                const deleteBtn = cardElement.querySelector('.fa-trash').parentElement;
+                
+                // Edit functionality
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    // Show input, hide content
+                    contentDiv.classList.add('hidden');
+                    editInput.classList.remove('hidden');
+                    
+                    // Focus input
+                    editInput.focus();
+                    
+                    // Save on Enter or blur
+                    const saveEdit = () => {
+                        if (editInput.value.trim() !== '') {
+                            this.updateCardContent(cardId, editInput.value);
+                        } else {
+                            // Revert if empty
+                            editInput.value = contentDiv.textContent;
+                        }
+                        
+                        // Hide input, show content
+                        contentDiv.classList.remove('hidden');
+                        editInput.classList.add('hidden');
+                    };
+                    
+                    editInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') saveEdit();
+                    });
+                    
+                    editInput.addEventListener('blur', saveEdit);
+                });
+                
+                // Delete functionality
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    if (confirm('Are you sure you want to delete this card?')) {
+                        this.deleteCard(cardId);
+                    }
+                });
+                
+                // Drag events
+                cardElement.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', cardId);
+                    cardElement.classList.add('opacity-75');
+                });
+                
+                cardElement.addEventListener('dragend', () => {
+                    cardElement.classList.remove('opacity-75');
+                });
+            },
+            
+            // Update a card's content
+            updateCardContent(cardId, newContent) {
+                const card = this.cards.find(c => c.id === cardId);
+                if (card && newContent.trim() !== '') {
+                    card.content = newContent;
+                    this.saveState();
+                    
+                    // Update the DOM
+                    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+                    if (cardElement) {
+                        cardElement.querySelector('.content').textContent = newContent;
+                    }
+                }
+            },
+            
+            // Delete a card
+            deleteCard(cardId) {
+                this.cards = this.cards.filter(card => card.id !== cardId);
+                this.saveState();
+                
+                // Remove from DOM
+                const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+                if (cardElement) {
+                    cardElement.remove();
+                    this.updateColumnCounts();
+                }
+            },
+            
+            // Move a card to a new column
+            moveCard(cardId, newColumnId) {
+                const card = this.cards.find(c => c.id === cardId);
+                if (card && card.columnId !== newColumnId) {
+                    const oldColumn = card.columnId;
+                    card.columnId = newColumnId;
+                    
+                    // Update state
+                    this.saveState();
+                    
+                    // Trigger confetti if moved to "Done"
+                    if (newColumnId === 'done') {
+                        this.triggerConfetti();
+                    }
+                    
+                    // Update counts
+                    this.updateColumnCounts();
+                }
+            },
+            
+            // Trigger confetti animation
+            triggerConfetti() {
+                const container = this.elements.confettiContainer;
+                
+                // Create confetti
+                confetti.create(container, {
+                    resize: true,
+                    useWorker: true
+                })({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b']
+                });
+                
+                // Clear confetti after animation
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 5000);
+            },
+            
+            // Update column card counts
+            updateColumnCounts() {
+                this.columns.forEach(column => {
+                    const count = this.cards.filter(card => card.columnId === column.id).length;
+                    const countElement = this.elements[`${column.id}-count`];
+                    if (countElement) {
+                        countElement.textContent = count;
+                    }
+                });
+            },
+            
+            // Bind all events
+            bindEvents() {
+                // Column drag and drop events
+                this.columns.forEach(column => {
+                    const columnElement = this.elements[column.id];
+                    const cardsContainer = this.elements[`${column.id}-cards`];
+                    
+                    // Drag over
+                    columnElement.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        columnElement.classList.add('drag-over');
+                    });
+                    
+                    // Drag leave
+                    columnElement.addEventListener('dragleave', () => {
+                        columnElement.classList.remove('drag-over');
+                    });
+                    
+                    // Drop
+                    columnElement.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        columnElement.classList.remove('drag-over');
+                        
+                        const cardId = e.dataTransfer.getData('text/plain');
+                        this.moveCard(cardId, column.id);
+                        
+                        // Re-render to update DOM
+                        this.renderCards();
+                    });
+                });
+                
+                // Add card buttons
+                this.columns.forEach(column => {
+                    const addBtn = this.elements[`add-${column.id}`];
+                    if (addBtn) {
+                        addBtn.addEventListener('click', () => {
+                            this.addNewCard(column.id);
+                        });
+                    }
+                });
+            },
+            
+            // Add a new card to a column
+            addNewCard(columnId) {
+                const content = prompt('Enter card content:');
+                
+                if (content && content.trim() !== '') {
+                    const newCard = {
+                        id: Date.now().toString(),
+                        content: content.trim(),
+                        columnId: columnId
+                    };
+                    
+                    this.cards.push(newCard);
+                    this.saveState();
+                    
+                    // Add to DOM
+                    const cardElement = this.createCardElement(newCard);
+                    const columnCardsElement = this.elements[`${columnId}-cards`];
+                    if (columnCardsElement) {
+                        columnCardsElement.appendChild(cardElement);
+                    }
+                    
+                    // Update counts
+                    this.updateColumnCounts();
+                }
+            }
+        };
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            KanbanApp.init();
+        });
+    </script>
+</body>
+</html>

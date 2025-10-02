@@ -1,0 +1,591 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom animations and transitions */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .card-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .card-dragging {
+            opacity: 0.5;
+            transform: rotate(2deg);
+        }
+
+        .column-drag-over {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-color: #3b82f6;
+        }
+
+        .delete-confirm {
+            animation: pulse 0.3s ease-in-out;
+        }
+
+        /* Confetti styles */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Smooth transitions */
+        * {
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Card hover effect */
+        .kanban-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Gradient backgrounds for columns */
+        .column-backlog { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .column-progress { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .column-review { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .column-done { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-5xl font-bold text-center bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                🎯 Kanban Board
+            </h1>
+            <p class="text-center text-slate-600 text-lg">Drag, drop, and organize your tasks with style</p>
+        </header>
+
+        <!-- Kanban Board -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="kanban-board">
+            <!-- Columns will be dynamically generated here -->
+        </div>
+    </div>
+
+    <!-- Modal for adding/editing cards -->
+    <div id="card-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+            <h2 id="modal-title" class="text-2xl font-bold text-slate-800 mb-4">Add New Card</h2>
+            <textarea 
+                id="card-input" 
+                class="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none resize-none text-slate-700"
+                rows="4"
+                placeholder="Enter card content..."
+            ></textarea>
+            <div class="flex gap-3 mt-6">
+                <button 
+                    id="save-card-btn" 
+                    class="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105"
+                >
+                    Save
+                </button>
+                <button 
+                    id="cancel-card-btn" 
+                    class="flex-1 bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-semibold hover:bg-slate-300"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete confirmation modal -->
+    <div id="delete-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all delete-confirm">
+            <h2 class="text-2xl font-bold text-slate-800 mb-4">🗑️ Delete Card?</h2>
+            <p class="text-slate-600 mb-6">Are you sure you want to delete this card? This action cannot be undone.</p>
+            <div class="flex gap-3">
+                <button 
+                    id="confirm-delete-btn" 
+                    class="flex-1 bg-red-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-red-600 hover:shadow-lg transform hover:scale-105"
+                >
+                    Delete
+                </button>
+                <button 
+                    id="cancel-delete-btn" 
+                    class="flex-1 bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-semibold hover:bg-slate-300"
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Kanban Board Application
+         * A fully functional kanban board with drag-and-drop, localStorage persistence, and confetti animations
+         */
+
+        // Configuration
+        const STORAGE_KEY = 'kanban_board_v1_data'; // Namespaced localStorage key
+        const COLUMNS = [
+            { id: 'backlog', title: 'Backlog', icon: '📋', color: 'column-backlog' },
+            { id: 'progress', title: 'In Progress', icon: '🚀', color: 'column-progress' },
+            { id: 'review', title: 'Review', icon: '👀', color: 'column-review' },
+            { id: 'done', title: 'Done', icon: '✅', color: 'column-done' }
+        ];
+
+        // Dummy data for initial load
+        const DUMMY_CARDS = [
+            { id: '1', content: 'Design new landing page', columnId: 'backlog' },
+            { id: '2', content: 'Implement user authentication', columnId: 'progress' },
+            { id: '3', content: 'Write API documentation', columnId: 'backlog' },
+            { id: '4', content: 'Code review for payment module', columnId: 'review' },
+            { id: '5', content: 'Setup CI/CD pipeline', columnId: 'done' },
+            { id: '6', content: 'Database optimization', columnId: 'progress' }
+        ];
+
+        // Application state
+        let cards = [];
+        let draggedCard = null;
+        let currentEditingCard = null;
+        let currentDeletingCard = null;
+        let currentModalColumn = null;
+
+        /**
+         * Initialize the application
+         */
+        function init() {
+            loadCards();
+            renderBoard();
+            setupEventListeners();
+        }
+
+        /**
+         * Load cards from localStorage or use dummy data
+         */
+        function loadCards() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                cards = JSON.parse(stored);
+            } else {
+                // No cards in storage, use dummy data
+                cards = DUMMY_CARDS;
+                saveCards();
+            }
+        }
+
+        /**
+         * Save cards to localStorage
+         */
+        function saveCards() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+        }
+
+        /**
+         * Generate unique ID for new cards
+         */
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        /**
+         * Render the entire kanban board
+         */
+        function renderBoard() {
+            const board = document.getElementById('kanban-board');
+            board.innerHTML = '';
+
+            COLUMNS.forEach(column => {
+                const columnEl = createColumnElement(column);
+                board.appendChild(columnEl);
+            });
+        }
+
+        /**
+         * Create a column element
+         */
+        function createColumnElement(column) {
+            const columnDiv = document.createElement('div');
+            columnDiv.className = 'bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col';
+            columnDiv.dataset.columnId = column.id;
+
+            // Column header with gradient
+            const header = document.createElement('div');
+            header.className = `${column.color} text-white p-4 flex items-center justify-between`;
+            header.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">${column.icon}</span>
+                    <h2 class="text-xl font-bold">${column.title}</h2>
+                    <span class="bg-white bg-opacity-30 rounded-full px-3 py-1 text-sm font-semibold">
+                        ${cards.filter(c => c.columnId === column.id).length}
+                    </span>
+                </div>
+            `;
+
+            // Add card button
+            const addBtn = document.createElement('button');
+            addBtn.className = 'bg-white bg-opacity-30 hover:bg-opacity-50 rounded-lg p-2 transition-all transform hover:scale-110';
+            addBtn.innerHTML = '<span class="text-2xl">+</span>';
+            addBtn.onclick = () => openAddCardModal(column.id);
+            header.appendChild(addBtn);
+
+            // Cards container with drag-and-drop
+            const cardsContainer = document.createElement('div');
+            cardsContainer.className = 'flex-1 p-4 space-y-3 overflow-y-auto min-h-[200px] max-h-[600px]';
+            cardsContainer.dataset.columnId = column.id;
+            
+            // Add drag and drop event listeners
+            cardsContainer.addEventListener('dragover', handleDragOver);
+            cardsContainer.addEventListener('drop', handleDrop);
+            cardsContainer.addEventListener('dragleave', handleDragLeave);
+
+            // Render cards for this column
+            const columnCards = cards.filter(card => card.columnId === column.id);
+            columnCards.forEach(card => {
+                const cardEl = createCardElement(card);
+                cardsContainer.appendChild(cardEl);
+            });
+
+            columnDiv.appendChild(header);
+            columnDiv.appendChild(cardsContainer);
+
+            return columnDiv;
+        }
+
+        /**
+         * Create a card element
+         */
+        function createCardElement(card) {
+            const cardDiv = document.createElement('div');
+            cardDiv.className = 'kanban-card bg-white p-4 rounded-xl shadow-md border-2 border-slate-100 cursor-move card-enter';
+            cardDiv.draggable = true;
+            cardDiv.dataset.cardId = card.id;
+
+            // Card content
+            const content = document.createElement('p');
+            content.className = 'text-slate-700 mb-3 whitespace-pre-wrap';
+            content.textContent = card.content;
+
+            // Card actions
+            const actions = document.createElement('div');
+            actions.className = 'flex gap-2 justify-end';
+
+            // Edit button
+            const editBtn = document.createElement('button');
+            editBtn.className = 'text-blue-500 hover:text-blue-700 p-2 rounded-lg hover:bg-blue-50 transition-all';
+            editBtn.innerHTML = '✏️';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                openEditCardModal(card);
+            };
+
+            // Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-all';
+            deleteBtn.innerHTML = '🗑️';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                openDeleteModal(card);
+            };
+
+            actions.appendChild(editBtn);
+            actions.appendChild(deleteBtn);
+
+            cardDiv.appendChild(content);
+            cardDiv.appendChild(actions);
+
+            // Drag event listeners
+            cardDiv.addEventListener('dragstart', handleDragStart);
+            cardDiv.addEventListener('dragend', handleDragEnd);
+
+            return cardDiv;
+        }
+
+        /**
+         * Handle drag start event
+         */
+        function handleDragStart(e) {
+            draggedCard = e.target;
+            e.target.classList.add('card-dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.innerHTML);
+        }
+
+        /**
+         * Handle drag end event
+         */
+        function handleDragEnd(e) {
+            e.target.classList.remove('card-dragging');
+            
+            // Remove drag-over styling from all columns
+            document.querySelectorAll('[data-column-id]').forEach(col => {
+                col.querySelector('div[data-column-id]')?.classList.remove('column-drag-over');
+            });
+        }
+
+        /**
+         * Handle drag over event
+         */
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('column-drag-over');
+            return false;
+        }
+
+        /**
+         * Handle drag leave event
+         */
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('column-drag-over');
+        }
+
+        /**
+         * Handle drop event
+         */
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            e.preventDefault();
+
+            e.currentTarget.classList.remove('column-drag-over');
+
+            const targetColumnId = e.currentTarget.dataset.columnId;
+            const cardId = draggedCard.dataset.cardId;
+            const card = cards.find(c => c.id === cardId);
+
+            if (card && card.columnId !== targetColumnId) {
+                const oldColumnId = card.columnId;
+                card.columnId = targetColumnId;
+                saveCards();
+                renderBoard();
+
+                // Trigger confetti if moved to "Done"
+                if (targetColumnId === 'done') {
+                    triggerConfetti();
+                }
+            }
+
+            return false;
+        }
+
+        /**
+         * Open modal to add a new card
+         */
+        function openAddCardModal(columnId) {
+            currentModalColumn = columnId;
+            currentEditingCard = null;
+            document.getElementById('modal-title').textContent = 'Add New Card';
+            document.getElementById('card-input').value = '';
+            document.getElementById('card-modal').classList.remove('hidden');
+            document.getElementById('card-input').focus();
+        }
+
+        /**
+         * Open modal to edit an existing card
+         */
+        function openEditCardModal(card) {
+            currentEditingCard = card;
+            currentModalColumn = card.columnId;
+            document.getElementById('modal-title').textContent = 'Edit Card';
+            document.getElementById('card-input').value = card.content;
+            document.getElementById('card-modal').classList.remove('hidden');
+            document.getElementById('card-input').focus();
+        }
+
+        /**
+         * Close the card modal
+         */
+        function closeCardModal() {
+            document.getElementById('card-modal').classList.add('hidden');
+            currentEditingCard = null;
+            currentModalColumn = null;
+        }
+
+        /**
+         * Save card (add or edit)
+         */
+        function saveCard() {
+            const content = document.getElementById('card-input').value.trim();
+            
+            if (!content) {
+                return;
+            }
+
+            if (currentEditingCard) {
+                // Edit existing card
+                currentEditingCard.content = content;
+            } else {
+                // Add new card
+                const newCard = {
+                    id: generateId(),
+                    content: content,
+                    columnId: currentModalColumn
+                };
+                cards.push(newCard);
+            }
+
+            saveCards();
+            renderBoard();
+            closeCardModal();
+        }
+
+        /**
+         * Open delete confirmation modal
+         */
+        function openDeleteModal(card) {
+            currentDeletingCard = card;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        /**
+         * Close delete confirmation modal
+         */
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            currentDeletingCard = null;
+        }
+
+        /**
+         * Delete the card
+         */
+        function deleteCard() {
+            if (currentDeletingCard) {
+                cards = cards.filter(c => c.id !== currentDeletingCard.id);
+                saveCards();
+                renderBoard();
+                closeDeleteModal();
+            }
+        }
+
+        /**
+         * Setup event listeners for modals
+         */
+        function setupEventListeners() {
+            // Card modal
+            document.getElementById('save-card-btn').addEventListener('click', saveCard);
+            document.getElementById('cancel-card-btn').addEventListener('click', closeCardModal);
+            
+            // Delete modal
+            document.getElementById('confirm-delete-btn').addEventListener('click', deleteCard);
+            document.getElementById('cancel-delete-btn').addEventListener('click', closeDeleteModal);
+
+            // Close modals on escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeCardModal();
+                    closeDeleteModal();
+                }
+            });
+
+            // Close modals on backdrop click
+            document.getElementById('card-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'card-modal') {
+                    closeCardModal();
+                }
+            });
+
+            document.getElementById('delete-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'delete-modal') {
+                    closeDeleteModal();
+                }
+            });
+
+            // Save card on Ctrl/Cmd + Enter
+            document.getElementById('card-input').addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    saveCard();
+                }
+            });
+        }
+
+        /**
+         * Trigger confetti animation
+         */
+        function triggerConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffa500', '#ff1493'];
+            const confettiCount = 50;
+
+            for (let i = 0; i < confettiCount; i++) {
+                setTimeout(() => {
+                    createConfetti(colors[Math.floor(Math.random() * colors.length)]);
+                }, i * 30);
+            }
+        }
+
+        /**
+         * Create a single confetti piece
+         */
+        function createConfetti(color) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.backgroundColor = color;
+            confetti.style.left = Math.random() * window.innerWidth + 'px';
+            confetti.style.top = '-10px';
+            confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+            
+            document.body.appendChild(confetti);
+
+            const duration = 2000 + Math.random() * 1000;
+            const endX = (Math.random() - 0.5) * 200;
+            const endY = window.innerHeight + 10;
+
+            confetti.animate([
+                { transform: `translate(0, 0) rotate(0deg)`, opacity: 1 },
+                { transform: `translate(${endX}px, ${endY}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+            ], {
+                duration: duration,
+                easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+            }).onfinish = () => {
+                confetti.remove();
+            };
+        }
+
+        // Initialize the application when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
