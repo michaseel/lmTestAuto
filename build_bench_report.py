@@ -3,7 +3,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import quote
 import platform
 import subprocess
 try:
@@ -46,11 +46,34 @@ def fmt_float(v, digits=2):
     return (f"{v:.{digits}f}" if isinstance(v, (int, float)) else "-")
 
 
-def to_file_url(path: Path):
+def _relative_path(path_value, base_dir: Path):
+    if not path_value:
+        return None
     try:
-        return path.resolve().as_uri()
+        path_obj = Path(path_value)
+    except TypeError:
+        return None
+    base_resolved = base_dir.resolve()
+    candidate = path_obj if path_obj.is_absolute() else base_resolved / path_obj
+    try:
+        path_resolved = candidate.resolve()
     except Exception:
-        return str(path)
+        path_resolved = candidate
+    try:
+        rel = path_resolved.relative_to(base_resolved)
+        return rel.as_posix()
+    except ValueError:
+        try:
+            rel = os.path.relpath(str(path_resolved), str(base_resolved))
+            return Path(rel).as_posix()
+        except Exception:
+            return path_resolved.as_posix()
+
+
+def _relative_href(rel_path: str):
+    if not rel_path:
+        return None
+    return quote(rel_path, safe="/@:+,._-~=")
 
 
 def _is_macos():
@@ -99,6 +122,7 @@ def _machine_info():
 
 def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path: Path = None):
     # Prepare normalized rows for the table
+    base_dir = (out_path.parent if out_path else Path.cwd()).resolve()
     records = []
     total_gen_time = 0.0
     for p, d in rows:
@@ -129,6 +153,10 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
         gen_time = d.get("generation_time_seconds")
         if isinstance(gen_time, (int, float)):
             total_gen_time += gen_time
+        html_path = _relative_path(files.get("html"), base_dir)
+        log_path = _relative_path(files.get("powermetrics_log"), base_dir)
+        text_path = _relative_path(files.get("raw_text"), base_dir)
+        json_path = _relative_path(p, base_dir)
         rec = {
             "model": d.get("model"),
             "timestamp": d.get("timestamp"),
@@ -152,10 +180,10 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
             "mem_after_load_sys": ((mem.get("delta_since_baseline_after_load") or {}).get("system_used_bytes")),
             "mem_after_gen_sys": ((mem.get("delta_since_baseline_after_generation") or {}).get("system_used_bytes")),
             "errors": d.get("errors") or {},
-            "html_path": files.get("html"),
-            "log_path": files.get("powermetrics_log"),
-            "raw_json_path": str(p),
-            "raw_text_path": files.get("raw_text"),
+            "html_path": html_path,
+            "log_path": log_path,
+            "raw_json_path": json_path,
+            "raw_text_path": text_path,
             "model_size": model_size,
             "quantization": quant,
             "settings": {
@@ -394,10 +422,10 @@ function drawBarsTimes(){
 
     # Compute file URLs
     for r in records:
-        r["html_url"] = to_file_url(Path(r["html_path"])) if r.get("html_path") else None
-        r["log_url"] = to_file_url(Path(r["log_path"])) if r.get("log_path") else None
-        r["json_url"] = to_file_url(Path(r["raw_json_path"]))
-        r["text_url"] = to_file_url(Path(r["raw_text_path"])) if r.get("raw_text_path") else None
+        r["html_url"] = _relative_href(r.get("html_path"))
+        r["log_url"] = _relative_href(r.get("log_path"))
+        r["json_url"] = _relative_href(r.get("raw_json_path"))
+        r["text_url"] = _relative_href(r.get("raw_text_path"))
 
     # Build HTML doc
     data_json = json.dumps(records)
@@ -491,7 +519,8 @@ def main():
     rows = load_results(folder)
     html = build_html(rows, title=args.title, prompt_text=prompt_text, out_path=out)
     out.write_text(html)
-    print(f"Wrote report: {out.resolve()}")
+    display_out = _relative_path(out, Path.cwd()) or out.as_posix()
+    print(f"Wrote report: {display_out}")
 
 
 if __name__ == "__main__":
