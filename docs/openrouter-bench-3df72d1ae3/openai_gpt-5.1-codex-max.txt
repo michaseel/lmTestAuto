@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vanilla JS Kanban</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Subtle background pattern */
+    body {
+      background: radial-gradient(circle at 20% 20%, rgba(59,130,246,0.12), transparent 25%),
+                  radial-gradient(circle at 80% 0%, rgba(16,185,129,0.12), transparent 25%),
+                  radial-gradient(circle at 30% 80%, rgba(236,72,153,0.12), transparent 25%),
+                  #0f172a;
+    }
+    /* Confetti keyframes */
+    @keyframes confettiFall {
+      0% {
+        transform: translate3d(0, -100vh, 0) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translate3d(var(--x-offset), 100vh, 0) rotate(360deg);
+        opacity: 0;
+      }
+    }
+    /* Scrollbar refinement for card stacks */
+    .no-scrollbar::-webkit-scrollbar { width: 6px; }
+    .no-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 9999px; }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100">
+  <!-- Header -->
+  <header class="px-6 py-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div>
+      <p class="text-sm uppercase tracking-widest text-slate-400">Project Board</p>
+      <h1 class="text-3xl font-bold text-white">Vibrant Kanban</h1>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="px-3 py-1 rounded-full bg-white/10 text-sm text-slate-200 border border-white/10">Drag, drop, edit, and persist</span>
+    </div>
+  </header>
+
+  <!-- Board -->
+  <main class="px-6 pb-10">
+    <section id="board" class="grid gap-4 md:grid-cols-4">
+      <!-- Columns will be injected here -->
+    </section>
+  </main>
+
+  <!-- Add Card Modal -->
+  <div id="addModal" class="hidden fixed inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-slate-900/95 border border-white/10 rounded-2xl p-6 w-[90%] max-w-md shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold">Add a new card</h2>
+        <button id="closeAddModal" class="text-slate-400 hover:text-white transition">✕</button>
+      </div>
+      <form id="addForm" class="space-y-4">
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Card title</label>
+          <input id="cardTitleInput" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white" placeholder="e.g. Wireframe new layout" required />
+        </div>
+        <input type="hidden" id="addTargetColumn" />
+        <div class="flex justify-end gap-2">
+          <button type="button" id="cancelAdd" class="px-4 py-2 rounded-lg bg-white/10 text-slate-200 hover:bg-white/20 transition">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transition">Add Card</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="hidden fixed inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-slate-900/95 border border-white/10 rounded-2xl p-6 w-[90%] max-w-sm shadow-2xl">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-300">⚠️</div>
+        <div>
+          <h3 class="text-lg font-semibold">Delete card?</h3>
+          <p class="text-sm text-slate-300">This action cannot be undone.</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button id="cancelDelete" class="px-4 py-2 rounded-lg bg-white/10 text-slate-200 hover:bg-white/20 transition">Cancel</button>
+        <button id="confirmDelete" class="px-4 py-2 rounded-lg bg-rose-500 text-white hover:bg-rose-600 transition">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti container (particles are injected dynamically) -->
+  <div id="confettiRoot" class="pointer-events-none fixed inset-0 z-40"></div>
+
+  <script>
+    // ----------- State & Constants -----------
+    const STORAGE_KEY = 'kanban_v1_state';
+
+    // Column configuration with labels and accent colors
+    const COLUMNS = [
+      { id: 'backlog', title: 'Backlog', accent: 'from-slate-600 via-slate-700 to-slate-900' },
+      { id: 'inProgress', title: 'In Progress', accent: 'from-amber-500/70 via-orange-500/60 to-amber-700/60' },
+      { id: 'review', title: 'Review', accent: 'from-indigo-500/60 via-blue-500/50 to-indigo-700/60' },
+      { id: 'done', title: 'Done', accent: 'from-emerald-500/60 via-green-500/50 to-emerald-700/60' },
+    ];
+
+    let state = loadState();           // Main state object
+    let cardToDelete = null;           // Temp holder for deletion
+
+    // ----------- Persistence -----------
+    /**
+     * Load state from localStorage or create a default with dummy cards.
+     */
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try { return JSON.parse(raw); } catch (e) {}
+      }
+      // Default dummy data
+      return {
+        backlog: [
+          { id: crypto.randomUUID(), text: 'Set up project skeleton' },
+          { id: crypto.randomUUID(), text: 'Draft user stories' },
+        ],
+        inProgress: [
+          { id: crypto.randomUUID(), text: 'Design vibrant UI' },
+        ],
+        review: [
+          { id: crypto.randomUUID(), text: 'Cross-browser testing' },
+        ],
+        done: [
+          { id: crypto.randomUUID(), text: 'Team kickoff meeting' },
+        ],
+      };
+    }
+
+    /**
+     * Save current state to localStorage.
+     */
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // ----------- Rendering -----------
+    const boardEl = document.getElementById('board');
+
+    /**
+     * Render the entire board based on current state.
+     */
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      COLUMNS.forEach(col => {
+        const cards = state[col.id] || [];
+        const column = document.createElement('div');
+        column.className = 'flex flex-col gap-3 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur shadow-lg shadow-black/10';
+        column.dataset.column = col.id;
+
+        // Column header
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between';
+        header.innerHTML = `
+          <div>
+            <p class="text-xs uppercase tracking-[0.2em] text-slate-400">${col.title}</p>
+            <div class="flex items-center gap-2">
+              <div class="h-2 w-2 rounded-full bg-gradient-to-r ${col.accent}"></div>
+              <span class="text-sm text-slate-300">${cards.length} ${cards.length === 1 ? 'card' : 'cards'}</span>
+            </div>
+          </div>
+          <button data-add="${col.id}" class="text-sm px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow-indigo-500/20 hover:shadow-indigo-500/40 transition">＋ Add</button>
+        `;
+        column.appendChild(header);
+
+        // Card stack
+        const stack = document.createElement('div');
+        stack.className = 'flex-1 min-h-[200px] space-y-3 pt-2 overflow-y-auto no-scrollbar';
+        stack.dataset.column = col.id;
+        stack.addEventListener('dragover', handleDragOver);
+        stack.addEventListener('drop', handleDrop);
+
+        // Render cards
+        cards.forEach(card => {
+          const cardEl = document.createElement('article');
+          cardEl.draggable = true;
+          cardEl.dataset.id = card.id;
+          cardEl.dataset.column = col.id;
+          cardEl.className = 'group relative p-4 rounded-xl bg-slate-800/80 border border-white/5 shadow transition transform hover:-translate-y-0.5 hover:shadow-2xl hover:border-white/10';
+          cardEl.addEventListener('dragstart', handleDragStart);
+          cardEl.addEventListener('dragend', handleDragEnd);
+
+          // Delete button
+          const delBtn = document.createElement('button');
+          delBtn.className = 'opacity-0 group-hover:opacity-100 absolute top-2 right-2 text-slate-400 hover:text-rose-400 transition';
+          delBtn.innerHTML = '🗑';
+          delBtn.addEventListener('click', () => openDeleteModal(card.id, col.id));
+          cardEl.appendChild(delBtn);
+
+          // Editable text
+          const content = document.createElement('div');
+          content.className = 'text-base leading-relaxed text-white focus:outline-none';
+          content.contentEditable = true;
+          content.innerText = card.text;
+          content.addEventListener('keydown', (e) => {
+            // Prevent newlines with Enter; save on Enter/Blur
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              content.blur();
+            }
+          });
+          content.addEventListener('blur', () => {
+            const newText = content.innerText.trim() || 'Untitled card';
+            updateCardText(card.id, col.id, newText);
+          });
+
+          cardEl.appendChild(content);
+          stack.appendChild(cardEl);
+        });
+
+        column.appendChild(stack);
+        boardEl.appendChild(column);
+      });
+    }
+
+    // ----------- Card Updates -----------
+    /**
+     * Add a card to a column.
+     */
+    function addCard(columnId, text) {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      const newCard = { id: crypto.randomUUID(), text: trimmed };
+      state[columnId].push(newCard);
+      saveState();
+      renderBoard();
+    }
+
+    /**
+     * Update card text.
+     */
+    function updateCardText(cardId, columnId, newText) {
+      const col = state[columnId];
+      const card = col.find(c => c.id === cardId);
+      if (card) {
+        card.text = newText;
+        saveState();
+      }
+    }
+
+    /**
+     * Delete a card by id and column.
+     */
+    function deleteCard(cardId, columnId) {
+      state[columnId] = state[columnId].filter(c => c.id !== cardId);
+      saveState();
+      renderBoard();
+    }
+
+    /**
+     * Move a card from one column to another.
+     */
+    function moveCard(cardId, fromCol, toCol) {
+      if (fromCol === toCol) return;
+      const fromArr = state[fromCol];
+      const cardIndex = fromArr.findIndex(c => c.id === cardId);
+      if (cardIndex === -1) return;
+      const [card] = fromArr.splice(cardIndex, 1);
+      state[toCol].push(card);
+      saveState();
+      renderBoard();
+      if (toCol === 'done') triggerConfetti();
+    }
+
+    // ----------- Drag & Drop Handlers -----------
+    let draggedCard = null;
+
+    function handleDragStart(e) {
+      draggedCard = {
+        id: this.dataset.id,
+        from: this.dataset.column
+      };
+      e.dataTransfer.effectAllowed = 'move';
+      // Use an empty image for cleaner drag (optional)
+      const crt = document.createElement('div');
+      crt.className = 'hidden';
+      e.dataTransfer.setDragImage(crt, 0, 0);
+      this.classList.add('opacity-60', 'scale-[0.99]');
+    }
+
+    function handleDragEnd() {
+      this.classList.remove('opacity-60', 'scale-[0.99]');
+      draggedCard = null;
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      this.classList.add('ring-2', 'ring-indigo-500/60');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      this.classList.remove('ring-2', 'ring-indigo-500/60');
+      if (!draggedCard) return;
+      const targetColumn = this.dataset.column;
+      moveCard(draggedCard.id, draggedCard.from, targetColumn);
+    }
+
+    // ----------- Modal Logic -----------
+    const addModal = document.getElementById('addModal');
+    const addTargetColumn = document.getElementById('addTargetColumn');
+    const cardTitleInput = document.getElementById('cardTitleInput');
+    const addForm = document.getElementById('addForm');
+    const closeAddModalBtn = document.getElementById('closeAddModal');
+    const cancelAddBtn = document.getElementById('cancelAdd');
+
+    function openAddModal(columnId) {
+      addTargetColumn.value = columnId;
+      addModal.classList.remove('hidden');
+      setTimeout(() => cardTitleInput.focus(), 50);
+    }
+    function closeAddModal() {
+      addModal.classList.add('hidden');
+      cardTitleInput.value = '';
+    }
+
+    addForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      addCard(addTargetColumn.value, cardTitleInput.value);
+      closeAddModal();
+    });
+    closeAddModalBtn.addEventListener('click', closeAddModal);
+    cancelAddBtn.addEventListener('click', closeAddModal);
+
+    // Delete modal
+    const deleteModal = document.getElementById('deleteModal');
+    const confirmDeleteBtn = document.getElementById('confirmDelete');
+    const cancelDeleteBtn = document.getElementById('cancelDelete');
+
+    function openDeleteModal(cardId, columnId) {
+      cardToDelete = { cardId, columnId };
+      deleteModal.classList.remove('hidden');
+    }
+    function closeDeleteModal() {
+      deleteModal.classList.add('hidden');
+      cardToDelete = null;
+    }
+
+    confirmDeleteBtn.addEventListener('click', () => {
+      if (cardToDelete) {
+        deleteCard(cardToDelete.cardId, cardToDelete.columnId);
+      }
+      closeDeleteModal();
+    });
+    cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+
+    // Delegate "Add" button events
+    boardEl.addEventListener('click', (e) => {
+      const addTarget = e.target.closest('[data-add]');
+      if (addTarget) {
+        const colId = addTarget.dataset.add;
+        openAddModal(colId);
+      }
+    });
+
+    // ----------- Confetti Animation -----------
+    /**
+     * Lightweight DOM-based confetti.
+     */
+    function triggerConfetti() {
+      const root = document.getElementById('confettiRoot');
+      const colors = ['#a855f7', '#6366f1', '#22c55e', '#f97316', '#06b6d4', '#f43f5e', '#eab308'];
+      const burst = document.createElement('div');
+      burst.className = 'absolute inset-0 pointer-events-none overflow-hidden';
+      for (let i = 0; i < 80; i++) {
+        const piece = document.createElement('span');
+        const size = Math.random() * 8 + 6; // 6 - 14px
+        piece.style.position = 'absolute';
+        piece.style.left = Math.random() * 100 + 'vw';
+        piece.style.top = '-10vh';
+        piece.style.width = size + 'px';
+        piece.style.height = (size * 0.4) + 'px';
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.borderRadius = '2px';
+        piece.style.opacity = '0.9';
+        piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+        piece.style.setProperty('--x-offset', (Math.random() * 200 - 100) + 'px');
+        piece.style.animation = `confettiFall ${0.9 + Math.random() * 0.9}s ease-out forwards`;
+        burst.appendChild(piece);
+      }
+      root.appendChild(burst);
+      setTimeout(() => burst.remove(), 1800);
+    }
+
+    // ----------- Init -----------
+    renderBoard();
+  </script>
+</body>
+</html>

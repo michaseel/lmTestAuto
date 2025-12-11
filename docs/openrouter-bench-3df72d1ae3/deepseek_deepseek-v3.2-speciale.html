@@ -1,0 +1,435 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Board</title>
+  <!-- Tailwind CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <!-- Confetti library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    /* subtle scrollbar styling */
+    .cards-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    .cards-container::-webkit-scrollbar-thumb {
+      background-color: rgba(0,0,0,0.2);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div class="container mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Kanban Board</h1>
+    <div class="flex space-x-4 overflow-x-auto pb-4">
+      <!-- Backlog Column -->
+      <div data-column="backlog" class="kanban-column flex-shrink-0 w-72 bg-white rounded-lg shadow-md p-3 border-t-4 border-blue-500">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-semibold text-gray-700">Backlog</h2>
+          <button class="add-card-btn text-blue-500 hover:text-blue-700 font-medium" data-column="backlog">+ Add</button>
+        </div>
+        <div class="cards-container min-h-[100px] max-h-96 overflow-y-auto space-y-2" data-column="backlog"></div>
+      </div>
+      <!-- In Progress Column -->
+      <div data-column="in-progress" class="kanban-column flex-shrink-0 w-72 bg-white rounded-lg shadow-md p-3 border-t-4 border-yellow-500">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-semibold text-gray-700">In Progress</h2>
+          <button class="add-card-btn text-blue-500 hover:text-blue-700 font-medium" data-column="in-progress">+ Add</button>
+        </div>
+        <div class="cards-container min-h-[100px] max-h-96 overflow-y-auto space-y-2" data-column="in-progress"></div>
+      </div>
+      <!-- Review Column -->
+      <div data-column="review" class="kanban-column flex-shrink-0 w-72 bg-white rounded-lg shadow-md p-3 border-t-4 border-purple-500">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-semibold text-gray-700">Review</h2>
+          <button class="add-card-btn text-blue-500 hover:text-blue-700 font-medium" data-column="review">+ Add</button>
+        </div>
+        <div class="cards-container min-h-[100px] max-h-96 overflow-y-auto space-y-2" data-column="review"></div>
+      </div>
+      <!-- Done Column -->
+      <div data-column="done" class="kanban-column flex-shrink-0 w-72 bg-white rounded-lg shadow-md p-3 border-t-4 border-green-500">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-semibold text-gray-700">Done</h2>
+          <button class="add-card-btn text-blue-500 hover:text-blue-700 font-medium" data-column="done">+ Add</button>
+        </div>
+        <div class="cards-container min-h-[100px] max-h-96 overflow-y-auto space-y-2" data-column="done"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      // ---------- Constants ----------
+      const COLUMNS = ['backlog', 'in-progress', 'review', 'done'];
+      const STORAGE_KEY = 'kanban_board_data';
+
+      // ---------- State ----------
+      let state = {
+        backlog: [],
+        'in-progress': [],
+        review: [],
+        done: []
+      };
+
+      // ---------- Utility Functions ----------
+      function generateId() {
+        return 'card-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      }
+
+      // Load state from localStorage or create dummy cards
+      function loadState() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            // Ensure all columns exist
+            COLUMNS.forEach(col => {
+              state[col] = parsed[col] || [];
+            });
+          } catch (e) {
+            console.error('Failed to parse saved state', e);
+            createDummyCards();
+          }
+        } else {
+          createDummyCards();
+        }
+      }
+
+      // Create initial dummy cards
+      function createDummyCards() {
+        state.backlog = [
+          { id: generateId(), content: 'Design home page' },
+          { id: generateId(), content: 'Set up database' },
+          { id: generateId(), content: 'Implement user authentication' }
+        ];
+        state['in-progress'] = [
+          { id: generateId(), content: 'Develop Kanban board' }
+        ];
+        state.review = [
+          { id: generateId(), content: 'Review PR #123' }
+        ];
+        state.done = [];
+      }
+
+      // Persist state to localStorage
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      // ---------- DOM Creation ----------
+      // Build a card element and attach event listeners
+      function createCardElement(card, columnId) {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'card group bg-white p-3 rounded shadow hover:shadow-md transition-shadow duration-200 cursor-grab active:cursor-grabbing relative';
+        cardEl.draggable = true;
+        cardEl.dataset.cardId = card.id;
+        cardEl.dataset.columnId = columnId;
+
+        // Content display
+        const contentDisplay = document.createElement('div');
+        contentDisplay.className = 'card-content text-gray-800 break-words';
+        contentDisplay.textContent = card.content;
+
+        // Actions bar (delete button)
+        const actions = document.createElement('div');
+        actions.className = 'card-actions flex justify-end space-x-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200';
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.className = 'text-red-500 hover:text-red-700 text-xl font-bold';
+        deleteBtn.title = 'Delete card';
+        actions.appendChild(deleteBtn);
+
+        // Delete confirmation overlay
+        const confirmOverlay = document.createElement('div');
+        confirmOverlay.className = 'confirm-overlay absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center space-x-2 rounded hidden';
+        confirmOverlay.innerHTML = `
+          <span class="text-sm font-medium text-gray-700">Delete?</span>
+          <button class="confirm-yes px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">Yes</button>
+          <button class="confirm-no px-2 py-1 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">No</button>
+        `;
+
+        // Assemble card
+        cardEl.appendChild(contentDisplay);
+        cardEl.appendChild(actions);
+        cardEl.appendChild(confirmOverlay);
+
+        // ---------- Event Listeners ----------
+        // Double‑click to edit
+        cardEl.addEventListener('dblclick', () => {
+          enterEditMode(cardEl, card.id, columnId);
+        });
+
+        // Delete button → show overlay
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          confirmOverlay.classList.remove('hidden');
+        });
+
+        // Overlay buttons
+        const yesBtn = confirmOverlay.querySelector('.confirm-yes');
+        const noBtn = confirmOverlay.querySelector('.confirm-no');
+        yesBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteCard(card.id);
+        });
+        noBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          confirmOverlay.classList.add('hidden');
+        });
+
+        // Drag events
+        cardEl.addEventListener('dragstart', handleDragStart);
+        cardEl.addEventListener('dragend', handleDragEnd);
+
+        return cardEl;
+      }
+
+      // Render all columns from state
+      function renderAll() {
+        COLUMNS.forEach(colId => {
+          const container = document.querySelector(`.cards-container[data-column="${colId}"]`);
+          if (container) {
+            container.innerHTML = '';
+            state[colId].forEach(card => {
+              const cardEl = createCardElement(card, colId);
+              container.appendChild(cardEl);
+            });
+          }
+        });
+      }
+
+      // Render a single column (used as fallback)
+      function renderColumn(columnId) {
+        const container = document.querySelector(`.cards-container[data-column="${columnId}"]`);
+        if (!container) return;
+        container.innerHTML = '';
+        state[columnId].forEach(card => {
+          const cardEl = createCardElement(card, columnId);
+          container.appendChild(cardEl);
+        });
+      }
+
+      // ---------- Card Operations ----------
+      function addCard(columnId, content = 'New card', editImmediately = false) {
+        const card = {
+          id: generateId(),
+          content
+        };
+        state[columnId].push(card);
+        saveState();
+
+        const container = document.querySelector(`.cards-container[data-column="${columnId}"]`);
+        if (container) {
+          const cardEl = createCardElement(card, columnId);
+          container.appendChild(cardEl);
+          if (editImmediately) {
+            setTimeout(() => enterEditMode(cardEl, card.id, columnId), 0);
+          }
+        } else {
+          renderAll();
+        }
+      }
+
+      function editCard(cardId, newContent) {
+        for (const col of COLUMNS) {
+          const idx = state[col].findIndex(c => c.id === cardId);
+          if (idx !== -1) {
+            state[col][idx].content = newContent;
+            saveState();
+            break;
+          }
+        }
+      }
+
+      function deleteCard(cardId) {
+        for (const col of COLUMNS) {
+          const idx = state[col].findIndex(c => c.id === cardId);
+          if (idx !== -1) {
+            state[col].splice(idx, 1);
+            saveState();
+            const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
+            if (cardEl) {
+              cardEl.remove();
+            } else {
+              renderColumn(col);
+            }
+            break;
+          }
+        }
+      }
+
+      function moveCard(cardId, fromColumn, toColumn) {
+        if (fromColumn === toColumn) return; // no change
+
+        // Find card in state
+        const card = findCard(cardId, fromColumn);
+        if (!card) return;
+
+        // Update state
+        state[fromColumn] = state[fromColumn].filter(c => c.id !== cardId);
+        state[toColumn].push(card);
+        saveState();
+
+        // Update DOM
+        const sourceContainer = document.querySelector(`.cards-container[data-column="${fromColumn}"]`);
+        const targetContainer = document.querySelector(`.cards-container[data-column="${toColumn}"]`);
+        if (sourceContainer && targetContainer) {
+          const cardEl = sourceContainer.querySelector(`[data-card-id="${cardId}"]`);
+          if (cardEl) {
+            sourceContainer.removeChild(cardEl);
+            cardEl.dataset.columnId = toColumn;
+            targetContainer.appendChild(cardEl);
+            // Celebrate when a card reaches Done
+            if (toColumn === 'done') {
+              triggerConfetti();
+            }
+          } else {
+            // Fallback: re‑render both columns
+            renderColumn(fromColumn);
+            renderColumn(toColumn);
+            if (toColumn === 'done') triggerConfetti();
+          }
+        } else {
+          renderAll();
+          if (toColumn === 'done') triggerConfetti();
+        }
+      }
+
+      function findCard(cardId, columnId) {
+        const column = state[columnId];
+        if (!column) return null;
+        return column.find(c => c.id === cardId);
+      }
+
+      // ---------- In‑Place Editing ----------
+      function enterEditMode(cardEl, cardId, columnId) {
+        const contentDisplay = cardEl.querySelector('.card-content');
+        if (!contentDisplay) return;
+        const currentContent = contentDisplay.textContent;
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'w-full p-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-300';
+        textarea.value = currentContent;
+        contentDisplay.replaceWith(textarea);
+        textarea.focus();
+
+        const save = () => {
+          const newContent = textarea.value.trim();
+          if (newContent && newContent !== currentContent) {
+            editCard(cardId, newContent);
+          }
+          exitEditMode(cardEl, newContent || currentContent);
+        };
+
+        const cancel = () => {
+          exitEditMode(cardEl, currentContent);
+        };
+
+        textarea.addEventListener('blur', save);
+        textarea.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            textarea.blur();
+          } else if (e.key === 'Escape') {
+            cancel();
+          }
+        });
+      }
+
+      function exitEditMode(cardEl, content) {
+        const textarea = cardEl.querySelector('textarea');
+        if (!textarea) return;
+        const contentDisplay = document.createElement('div');
+        contentDisplay.className = 'card-content text-gray-800 break-words';
+        contentDisplay.textContent = content;
+        textarea.replaceWith(contentDisplay);
+      }
+
+      // ---------- Drag & Drop ----------
+      function handleDragStart(e) {
+        const cardEl = e.target.closest('.card');
+        if (!cardEl) return;
+        e.dataTransfer.setData('text/plain', cardEl.dataset.cardId);
+        e.dataTransfer.setData('sourceColumn', cardEl.dataset.columnId);
+        e.dataTransfer.effectAllowed = 'move';
+        cardEl.classList.add('opacity-50');
+      }
+
+      function handleDragEnd(e) {
+        const cardEl = e.target.closest('.card');
+        if (cardEl) {
+          cardEl.classList.remove('opacity-50');
+        }
+      }
+
+      function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const container = e.target.closest('.cards-container');
+        if (container) {
+          container.classList.add('bg-gray-200', 'bg-opacity-50');
+        }
+      }
+
+      function handleDragLeave(e) {
+        const container = e.target.closest('.cards-container');
+        if (container) {
+          container.classList.remove('bg-gray-200', 'bg-opacity-50');
+        }
+      }
+
+      function handleDrop(e) {
+        e.preventDefault();
+        const container = e.target.closest('.cards-container');
+        if (!container) return;
+        container.classList.remove('bg-gray-200', 'bg-opacity-50');
+        const targetColumn = container.dataset.column;
+        const cardId = e.dataTransfer.getData('text/plain');
+        const sourceColumn = e.dataTransfer.getData('sourceColumn');
+        if (cardId && sourceColumn && targetColumn) {
+          moveCard(cardId, sourceColumn, targetColumn);
+        }
+      }
+
+      function initDragAndDrop() {
+        const containers = document.querySelectorAll('.cards-container');
+        containers.forEach(container => {
+          container.addEventListener('dragover', handleDragOver);
+          container.addEventListener('dragleave', handleDragLeave);
+          container.addEventListener('drop', handleDrop);
+        });
+      }
+
+      // ---------- Add Card Buttons ----------
+      function initAddCardButtons() {
+        document.querySelectorAll('.add-card-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const columnId = btn.dataset.column;
+            if (columnId) {
+              addCard(columnId, 'New card', true);
+            }
+          });
+        });
+      }
+
+      // ---------- Confetti ----------
+      function triggerConfetti() {
+        if (typeof confetti === 'function') {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
+      }
+
+      // ---------- Initialization ----------
+      loadState();
+      renderAll();
+      initAddCardButtons();
+      initDragAndDrop();
+    });
+  </script>
+</body>
+</html>

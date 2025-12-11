@@ -10,33 +10,24 @@ import openrouter_report
 # --------- Config ----------
 OPENAI_BASE    = "https://openrouter.ai/api/v1"
 # Save all runs under ./reports/<timestamped-folder>
-PROMPT         = """Create a single-page Consultant Skills Management app in plain HTML with embedded vanilla JavaScript (no frameworks) and Tailwind via CDN.
+PROMPT         = """Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).
 
 Requirements:
-- Return only the complete self-contained HTML (script + styles included).
-- Modern, vibrant design, responsive layout, subtle CSS transitions.
-- Persist all data in localStorage under a unique namespace.
-- On first load, seed with 4 example consultants (from the german company INNOQ).
-
-Consultant Profile:
-- Name, Location, Short description
-- Availability:
-  - Current workload in % (0–100)
-  - Future workload in % with "valid from" date
-- Skills as tags (free taxonomy with autocomplete suggestions)
-- Each skill has 1–3 stars to indicate seniority.
-
-Functionality:
-- Global search across name, location, description, skills.
-- Combine filters (AND logic) for skills, stars, workload, location, future workload by date.
-- Add, edit, delete consultants and skills via custom modals (no alert/prompt).
-- Free tagging of skills with autocomplete suggestions.
-- Show active filters and allow clearing them quickly.
-
-Constraints:
-- Single HTML file, no external JS frameworks.
+- Columns: Backlog, In Progress, Review, Done.
+- Cards must be:
+  - draggable across columns,
+  - editable in place,
+  - persisted in localStorage (state survives reloads) - please use your own namespace,
+  - deletable with a confirmation prompt.
+- Each column provides an “Add card” action.
 - Style with Tailwind via CDN.
-- Responsive design for desktop and mobile.
+- Add subtle CSS transitions and trigger a confetti animation when a card moves to “Done”.
+- Thoroughly comment the code.
+- dont use window.alert or window.prompt to add/edit/delete cards
+- if there are no cards yet, create some dummy cards
+- modern and vibrant design
+
+As answer return the plain HTML of the working application (script and styles included)
 
 """
 MAX_TOKENS     = -1                 # set to None to omit and use server default
@@ -188,7 +179,7 @@ def benchmark_model(model_id):
 def main():
     parser = argparse.ArgumentParser(description="Benchmark OpenRouter models.")
     parser.add_argument("--models_file", type=str, default="openrouter_models.txt", help="Path to a file containing a list of model names to benchmark, one per line.")
-    parser.add_argument("--concurrency", type=int, default=4, help="Number of models to benchmark concurrently.")
+    parser.add_argument("--concurrency", type=int, default=8, help="Number of models to benchmark concurrently.")
     args = parser.parse_args()
 
     try:

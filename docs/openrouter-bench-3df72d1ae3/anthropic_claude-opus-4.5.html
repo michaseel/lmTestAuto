@@ -1,0 +1,830 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <!-- Tailwind CSS via CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom Tailwind configuration for extended colors and animations -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    // Custom gradient colors for column headers
+                    colors: {
+                        'backlog': { from: '#667eea', to: '#764ba2' },
+                        'progress': { from: '#f093fb', to: '#f5576c' },
+                        'review': { from: '#4facfe', to: '#00f2fe' },
+                        'done': { from: '#43e97b', to: '#38f9d7' }
+                    },
+                    // Custom animation for card entrance
+                    animation: {
+                        'slide-in': 'slideIn 0.3s ease-out',
+                        'confetti': 'confetti 1s ease-out forwards'
+                    },
+                    keyframes: {
+                        slideIn: {
+                            '0%': { opacity: '0', transform: 'translateY(-10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom CSS for drag and drop visual feedback */
+        
+        /* Style for card being dragged */
+        .dragging {
+            opacity: 0.5;
+            transform: rotate(3deg);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Style for column when a card is dragged over it */
+        .drag-over {
+            background-color: rgba(99, 102, 241, 0.1);
+            border: 2px dashed #6366f1;
+        }
+        
+        /* Smooth transitions for all interactive elements */
+        .card-transition {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        /* Confetti particle styling */
+        .confetti-particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            animation: fall linear forwards;
+        }
+        
+        /* Confetti falling animation */
+        @keyframes fall {
+            0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh) rotate(720deg);
+            }
+        }
+        
+        /* Custom scrollbar for columns */
+        .column-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .column-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+        
+        .column-content::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+        
+        .column-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Modal backdrop blur effect */
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+        }
+        
+        /* Gradient backgrounds for column headers */
+        .bg-gradient-backlog {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .bg-gradient-progress {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .bg-gradient-review {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .bg-gradient-done {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        /* Card hover effect */
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Input focus ring */
+        .custom-input:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #6366f1;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <!-- Main container -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header section -->
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-bold text-white mb-2 tracking-tight">
+                <!-- Emoji and title with gradient text -->
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500">
+                    ✨ Kanban Board
+                </span>
+            </h1>
+            <p class="text-gray-400 text-lg">Drag and drop to organize your tasks</p>
+        </header>
+        
+        <!-- Kanban board container - horizontal scrollable on mobile -->
+        <div id="board" class="flex gap-6 overflow-x-auto pb-4 min-h-[600px]">
+            <!-- Columns will be dynamically generated here -->
+        </div>
+    </div>
+    
+    <!-- Modal for adding/editing cards -->
+    <div id="cardModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 transform transition-all">
+            <!-- Modal header -->
+            <h2 id="modalTitle" class="text-2xl font-bold text-gray-800 mb-4">Add New Card</h2>
+            
+            <!-- Card title input -->
+            <div class="mb-4">
+                <label for="cardTitle" class="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                <input 
+                    type="text" 
+                    id="cardTitle" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    placeholder="Enter card title..."
+                >
+            </div>
+            
+            <!-- Card description textarea -->
+            <div class="mb-6">
+                <label for="cardDescription" class="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
+                <textarea 
+                    id="cardDescription" 
+                    rows="3"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+                    placeholder="Enter card description..."
+                ></textarea>
+            </div>
+            
+            <!-- Modal action buttons -->
+            <div class="flex gap-3">
+                <button 
+                    id="cancelBtn"
+                    class="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button 
+                    id="saveBtn"
+                    class="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-medium hover:from-indigo-600 hover:to-purple-600 transition-all"
+                >
+                    Save Card
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation modal for deleting cards -->
+    <div id="deleteModal" class="fixed inset-0 bg-black/50 modal-backdrop hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4 transform transition-all">
+            <!-- Warning icon -->
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">Delete Card?</h2>
+                <p class="text-gray-500">This action cannot be undone.</p>
+            </div>
+            
+            <!-- Delete confirmation buttons -->
+            <div class="flex gap-3">
+                <button 
+                    id="cancelDeleteBtn"
+                    class="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button 
+                    id="confirmDeleteBtn"
+                    class="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors"
+                >
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Kanban Board Application
+         * 
+         * A fully functional Kanban board with drag-and-drop functionality,
+         * localStorage persistence, and confetti animations.
+         * 
+         * Namespace: 'kanban_board_v1' for localStorage
+         */
+        
+        // ==========================================
+        // CONFIGURATION & CONSTANTS
+        // ==========================================
+        
+        // LocalStorage key namespace to avoid conflicts with other apps
+        const STORAGE_KEY = 'kanban_board_v1_data';
+        
+        // Column definitions with their properties
+        const COLUMNS = [
+            { id: 'backlog', title: 'Backlog', icon: '📋', gradient: 'bg-gradient-backlog' },
+            { id: 'in-progress', title: 'In Progress', icon: '🚀', gradient: 'bg-gradient-progress' },
+            { id: 'review', title: 'Review', icon: '🔍', gradient: 'bg-gradient-review' },
+            { id: 'done', title: 'Done', icon: '✅', gradient: 'bg-gradient-done' }
+        ];
+        
+        // Default cards to show when no data exists in localStorage
+        const DEFAULT_CARDS = [
+            { id: generateId(), title: 'Set up project structure', description: 'Initialize the repository and configure build tools', columnId: 'backlog' },
+            { id: generateId(), title: 'Design database schema', description: 'Create ERD and define relationships', columnId: 'backlog' },
+            { id: generateId(), title: 'Implement user authentication', description: 'Add login, signup, and password reset', columnId: 'in-progress' },
+            { id: generateId(), title: 'Create API endpoints', description: 'RESTful API for CRUD operations', columnId: 'in-progress' },
+            { id: generateId(), title: 'Code review for PR #42', description: 'Review the new feature implementation', columnId: 'review' },
+            { id: generateId(), title: 'Project kickoff meeting', description: 'Initial planning session completed', columnId: 'done' }
+        ];
+        
+        // ==========================================
+        // STATE MANAGEMENT
+        // ==========================================
+        
+        // Application state - holds all cards
+        let cards = [];
+        
+        // Currently dragged card reference
+        let draggedCard = null;
+        
+        // Modal state for editing
+        let editingCardId = null;
+        let currentColumnId = null;
+        
+        // Card to be deleted (for confirmation modal)
+        let cardToDelete = null;
+        
+        // ==========================================
+        // UTILITY FUNCTIONS
+        // ==========================================
+        
+        /**
+         * Generates a unique ID for cards
+         * Uses timestamp + random string for uniqueness
+         * @returns {string} Unique identifier
+         */
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+        
+        /**
+         * Saves current cards state to localStorage
+         * Uses JSON serialization for data persistence
+         */
+        function saveToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+            } catch (e) {
+                console.error('Failed to save to localStorage:', e);
+            }
+        }
+        
+        /**
+         * Loads cards from localStorage
+         * Returns default cards if no data exists or on error
+         * @returns {Array} Array of card objects
+         */
+        function loadFromStorage() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                if (data) {
+                    return JSON.parse(data);
+                }
+            } catch (e) {
+                console.error('Failed to load from localStorage:', e);
+            }
+            // Return default cards if no saved data
+            return [...DEFAULT_CARDS];
+        }
+        
+        // ==========================================
+        // CONFETTI ANIMATION
+        // ==========================================
+        
+        /**
+         * Creates a confetti celebration effect
+         * Spawns multiple colorful particles that fall from top
+         * @param {number} x - X coordinate for confetti origin
+         * @param {number} y - Y coordinate for confetti origin
+         */
+        function triggerConfetti(x, y) {
+            // Confetti colors - vibrant palette
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00'];
+            
+            // Create 50 confetti particles
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti-particle';
+                
+                // Random size between 8-16px
+                const size = Math.random() * 8 + 8;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // Random color from palette
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // Random shape (circle or square)
+                particle.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                
+                // Starting position with random spread
+                particle.style.left = `${x + (Math.random() - 0.5) * 200}px`;
+                particle.style.top = `${y - 50}px`;
+                
+                // Random animation duration (1-3 seconds)
+                const duration = Math.random() * 2 + 1;
+                particle.style.animationDuration = `${duration}s`;
+                
+                // Add to DOM
+                document.body.appendChild(particle);
+                
+                // Remove particle after animation completes
+                setTimeout(() => {
+                    particle.remove();
+                }, duration * 1000);
+            }
+        }
+        
+        // ==========================================
+        // MODAL FUNCTIONS
+        // ==========================================
+        
+        /**
+         * Opens the card modal for adding or editing
+         * @param {string} columnId - Target column for new card
+         * @param {Object|null} card - Existing card for editing, null for new
+         */
+        function openCardModal(columnId, card = null) {
+            const modal = document.getElementById('cardModal');
+            const titleInput = document.getElementById('cardTitle');
+            const descInput = document.getElementById('cardDescription');
+            const modalTitle = document.getElementById('modalTitle');
+            
+            // Set modal state
+            currentColumnId = columnId;
+            editingCardId = card ? card.id : null;
+            
+            // Update modal title based on mode
+            modalTitle.textContent = card ? 'Edit Card' : 'Add New Card';
+            
+            // Pre-fill inputs if editing
+            titleInput.value = card ? card.title : '';
+            descInput.value = card ? card.description || '' : '';
+            
+            // Show modal with flex display
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Focus title input after a brief delay (for animation)
+            setTimeout(() => titleInput.focus(), 100);
+        }
+        
+        /**
+         * Closes the card modal and resets state
+         */
+        function closeCardModal() {
+            const modal = document.getElementById('cardModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            
+            // Reset state
+            editingCardId = null;
+            currentColumnId = null;
+        }
+        
+        /**
+         * Opens the delete confirmation modal
+         * @param {string} cardId - ID of card to potentially delete
+         */
+        function openDeleteModal(cardId) {
+            cardToDelete = cardId;
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        /**
+         * Closes the delete confirmation modal
+         */
+        function closeDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            cardToDelete = null;
+        }
+        
+        // ==========================================
+        // CARD CRUD OPERATIONS
+        // ==========================================
+        
+        /**
+         * Saves a card (create or update)
+         * Called when user clicks Save in the modal
+         */
+        function saveCard() {
+            const titleInput = document.getElementById('cardTitle');
+            const descInput = document.getElementById('cardDescription');
+            
+            const title = titleInput.value.trim();
+            const description = descInput.value.trim();
+            
+            // Validate title is not empty
+            if (!title) {
+                titleInput.classList.add('border-red-500');
+                titleInput.focus();
+                return;
+            }
+            
+            titleInput.classList.remove('border-red-500');
+            
+            if (editingCardId) {
+                // Update existing card
+                const cardIndex = cards.findIndex(c => c.id === editingCardId);
+                if (cardIndex !== -1) {
+                    cards[cardIndex].title = title;
+                    cards[cardIndex].description = description;
+                }
+            } else {
+                // Create new card
+                const newCard = {
+                    id: generateId(),
+                    title,
+                    description,
+                    columnId: currentColumnId
+                };
+                cards.push(newCard);
+            }
+            
+            // Persist and re-render
+            saveToStorage();
+            renderBoard();
+            closeCardModal();
+        }
+        
+        /**
+         * Deletes a card after confirmation
+         */
+        function deleteCard() {
+            if (cardToDelete) {
+                // Filter out the deleted card
+                cards = cards.filter(c => c.id !== cardToDelete);
+                saveToStorage();
+                renderBoard();
+                closeDeleteModal();
+            }
+        }
+        
+        /**
+         * Moves a card to a new column
+         * @param {string} cardId - ID of card to move
+         * @param {string} newColumnId - Target column ID
+         */
+        function moveCard(cardId, newColumnId) {
+            const card = cards.find(c => c.id === cardId);
+            if (card) {
+                const oldColumnId = card.columnId;
+                card.columnId = newColumnId;
+                saveToStorage();
+                renderBoard();
+                
+                // Trigger confetti if moved to Done column
+                if (newColumnId === 'done' && oldColumnId !== 'done') {
+                    // Get the Done column position for confetti
+                    const doneColumn = document.querySelector('[data-column="done"]');
+                    if (doneColumn) {
+                        const rect = doneColumn.getBoundingClientRect();
+                        triggerConfetti(rect.left + rect.width / 2, rect.top + 100);
+                    }
+                }
+            }
+        }
+        
+        // ==========================================
+        // DRAG AND DROP HANDLERS
+        // ==========================================
+        
+        /**
+         * Handles drag start event on a card
+         * @param {DragEvent} e - The drag event
+         * @param {string} cardId - ID of the card being dragged
+         */
+        function handleDragStart(e, cardId) {
+            draggedCard = cardId;
+            
+            // Set drag data for cross-browser compatibility
+            e.dataTransfer.setData('text/plain', cardId);
+            e.dataTransfer.effectAllowed = 'move';
+            
+            // Add visual feedback class after a brief delay
+            // (allows the drag image to be captured first)
+            setTimeout(() => {
+                e.target.classList.add('dragging');
+            }, 0);
+        }
+        
+        /**
+         * Handles drag end event
+         * @param {DragEvent} e - The drag event
+         */
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedCard = null;
+            
+            // Remove drag-over class from all columns
+            document.querySelectorAll('.column-content').forEach(col => {
+                col.classList.remove('drag-over');
+            });
+        }
+        
+        /**
+         * Handles drag over event on a column
+         * @param {DragEvent} e - The drag event
+         */
+        function handleDragOver(e) {
+            // Prevent default to allow drop
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+        
+        /**
+         * Handles drag enter event on a column
+         * @param {DragEvent} e - The drag event
+         */
+        function handleDragEnter(e) {
+            e.preventDefault();
+            const column = e.currentTarget;
+            column.classList.add('drag-over');
+        }
+        
+        /**
+         * Handles drag leave event on a column
+         * @param {DragEvent} e - The drag event
+         */
+        function handleDragLeave(e) {
+            const column = e.currentTarget;
+            // Only remove class if leaving the column entirely
+            if (!column.contains(e.relatedTarget)) {
+                column.classList.remove('drag-over');
+            }
+        }
+        
+        /**
+         * Handles drop event on a column
+         * @param {DragEvent} e - The drag event
+         * @param {string} columnId - Target column ID
+         */
+        function handleDrop(e, columnId) {
+            e.preventDefault();
+            const column = e.currentTarget;
+            column.classList.remove('drag-over');
+            
+            // Get the dragged card ID
+            const cardId = e.dataTransfer.getData('text/plain') || draggedCard;
+            
+            if (cardId) {
+                moveCard(cardId, columnId);
+            }
+        }
+        
+        // ==========================================
+        // RENDERING FUNCTIONS
+        // ==========================================
+        
+        /**
+         * Creates HTML for a single card
+         * @param {Object} card - Card object with id, title, description
+         * @returns {string} HTML string for the card
+         */
+        function createCardHTML(card) {
+            return `
+                <div 
+                    class="card bg-white rounded-xl p-4 shadow-lg card-transition cursor-grab active:cursor-grabbing animate-slide-in"
+                    draggable="true"
+                    data-card-id="${card.id}"
+                >
+                    <!-- Card header with title and actions -->
+                    <div class="flex justify-between items-start gap-2 mb-2">
+                        <h3 class="font-semibold text-gray-800 flex-1">${escapeHtml(card.title)}</h3>
+                        <div class="flex gap-1">
+                            <!-- Edit button -->
+                            <button 
+                                class="p-1.5 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"
+                                onclick="event.stopPropagation(); openCardModal('${card.columnId}', cards.find(c => c.id === '${card.id}'))"
+                                title="Edit card"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                            <!-- Delete button -->
+                            <button 
+                                class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                onclick="event.stopPropagation(); openDeleteModal('${card.id}')"
+                                title="Delete card"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Card description (if exists) -->
+                    ${card.description ? `<p class="text-sm text-gray-500 line-clamp-2">${escapeHtml(card.description)}</p>` : ''}
+                </div>
+            `;
+        }
+        
+        /**
+         * Creates HTML for a column
+         * @param {Object} column - Column configuration object
+         * @returns {string} HTML string for the column
+         */
+        function createColumnHTML(column) {
+            // Get cards for this column
+            const columnCards = cards.filter(c => c.columnId === column.id);
+            
+            return `
+                <div class="flex-shrink-0 w-80" data-column="${column.id}">
+                    <!-- Column container with glass effect -->
+                    <div class="bg-white/10 backdrop-blur-lg rounded-2xl overflow-hidden shadow-xl border border-white/20">
+                        <!-- Column header with gradient -->
+                        <div class="${column.gradient} p-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-2xl">${column.icon}</span>
+                                    <h2 class="font-bold text-white text-lg">${column.title}</h2>
+                                </div>
+                                <!-- Card count badge -->
+                                <span class="bg-white/30 text-white text-sm font-medium px-2.5 py-0.5 rounded-full">
+                                    ${columnCards.length}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Column content area (droppable) -->
+                        <div 
+                            class="column-content p-4 min-h-[400px] max-h-[500px] overflow-y-auto space-y-3 transition-all duration-200"
+                            data-column-id="${column.id}"
+                        >
+                            ${columnCards.map(card => createCardHTML(card)).join('')}
+                        </div>
+                        
+                        <!-- Add card button -->
+                        <div class="p-4 border-t border-white/10">
+                            <button 
+                                class="w-full py-3 px-4 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 group"
+                                onclick="openCardModal('${column.id}')"
+                            >
+                                <svg class="w-5 h-5 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Add Card
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        /**
+         * Escapes HTML special characters to prevent XSS
+         * @param {string} text - Text to escape
+         * @returns {string} Escaped text
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        /**
+         * Renders the entire board
+         * Regenerates all columns and cards, then attaches event listeners
+         */
+        function renderBoard() {
+            const board = document.getElementById('board');
+            
+            // Generate HTML for all columns
+            board.innerHTML = COLUMNS.map(column => createColumnHTML(column)).join('');
+            
+            // Attach drag and drop event listeners to columns
+            document.querySelectorAll('.column-content').forEach(column => {
+                const columnId = column.dataset.columnId;
+                
+                column.addEventListener('dragover', handleDragOver);
+                column.addEventListener('dragenter', handleDragEnter);
+                column.addEventListener('dragleave', handleDragLeave);
+                column.addEventListener('drop', (e) => handleDrop(e, columnId));
+            });
+            
+            // Attach drag event listeners to cards
+            document.querySelectorAll('.card').forEach(card => {
+                const cardId = card.dataset.cardId;
+                
+                card.addEventListener('dragstart', (e) => handleDragStart(e, cardId));
+                card.addEventListener('dragend', handleDragEnd);
+            });
+        }
+        
+        // ==========================================
+        // EVENT LISTENERS SETUP
+        // ==========================================
+        
+        /**
+         * Sets up global event listeners for modals and keyboard shortcuts
+         */
+        function setupEventListeners() {
+            // Card modal buttons
+            document.getElementById('cancelBtn').addEventListener('click', closeCardModal);
+            document.getElementById('saveBtn').addEventListener('click', saveCard);
+            
+            // Delete modal buttons
+            document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
+            document.getElementById('confirmDeleteBtn').addEventListener('click', deleteCard);
+            
+            // Close modals when clicking outside
+            document.getElementById('cardModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    closeCardModal();
+                }
+            });
+            
+            document.getElementById('deleteModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    closeDeleteModal();
+                }
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Escape to close modals
+                if (e.key === 'Escape') {
+                    closeCardModal();
+                    closeDeleteModal();
+                }
+                
+                // Enter to save card (when modal is open and title has focus)
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    const modal = document.getElementById('cardModal');
+                    const activeElement = document.activeElement;
+                    
+                    // Only save if modal is open and we're in the title input
+                    if (!modal.classList.contains('hidden') && activeElement.id === 'cardTitle') {
+                        e.preventDefault();
+                        saveCard();
+                    }
+                }
+            });
+        }
+        
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        
+        /**
+         * Initializes the application
+         * Loads data from storage and renders the board
+         */
+        function init() {
+            // Load cards from localStorage (or use defaults)
+            cards = loadFromStorage();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Initial render
+            renderBoard();
+            
+            console.log('🎯 Kanban Board initialized!');
+            console.log(`📦 Loaded ${cards.length} cards from storage`);
+        }
+        
+        // Start the application when DOM is ready
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,523 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flowstate Kanban</title>
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Shared card styling */
+    .kanban-card {
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .kanban-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+    .kanban-card:focus-within {
+      border-color: #c084fc;
+      box-shadow: 0 10px 30px rgba(192, 132, 252, 0.3);
+    }
+
+    /* Column hover lift */
+    .kanban-column {
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+    .kanban-column:hover {
+      transform: translateY(-6px);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Drag-over highlight */
+    .drop-target-active {
+      border: 1px dashed rgba(255, 255, 255, 0.5);
+      background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    /* Confetti layer and animation */
+    #confettiLayer {
+      pointer-events: none;
+    }
+    .confetti-piece {
+      position: absolute;
+      top: -10%;
+      width: 8px;
+      height: 14px;
+      border-radius: 9999px;
+      opacity: 0.9;
+      animation: confetti-fall linear forwards;
+    }
+    @keyframes confetti-fall {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(120vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-50">
+  <main class="container mx-auto px-6 py-10 flex flex-col gap-8">
+    <header class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div>
+        <p class="uppercase text-xs tracking-[0.4em] text-slate-400">workflow hub</p>
+        <h1 class="text-4xl md:text-5xl font-semibold">Flowstate Kanban</h1>
+        <p class="text-slate-400 mt-2">Drag tasks between stages, edit instantly, and let confetti celebrate your wins.</p>
+      </div>
+      <div class="flex flex-wrap gap-3 text-sm text-slate-300">
+        <div class="px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur">
+          Local data auto-saves
+        </div>
+        <div class="px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur">
+          Drag • Drop • Celebrate
+        </div>
+      </div>
+    </header>
+
+    <!-- Kanban board grid -->
+    <section id="board" class="grid gap-6 md:grid-cols-2 xl:grid-cols-4"></section>
+  </main>
+
+  <!-- Custom confirmation modal -->
+  <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 backdrop-blur-sm">
+    <div class="bg-slate-900 border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl">
+      <h2 class="text-xl font-semibold text-white">Delete card?</h2>
+      <p id="confirmMessage" class="text-slate-300 mt-2">Are you sure you want to delete this card?</p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button id="confirmDeleteBtn" type="button" class="flex-1 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-500 px-4 py-3 font-semibold text-white shadow-lg shadow-rose-500/30 transition hover:opacity-90">Delete</button>
+        <button id="cancelDeleteBtn" type="button" class="flex-1 rounded-2xl border border-white/10 px-4 py-3 font-semibold text-white/80 hover:text-white hover:border-white/40 transition">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti rendering layer -->
+  <div id="confettiLayer" class="pointer-events-none fixed inset-0 z-40 overflow-hidden"></div>
+
+  <script>
+    // Encapsulate everything to avoid leaking globals.
+    (() => {
+      const STORAGE_KEY = 'kanban.v1.flowstate'; // Custom namespace for persistence.
+
+      // Column definitions control labels, ids and header gradients.
+      const columnsConfig = [
+        { id: 'backlog', title: 'Backlog', gradient: 'from-fuchsia-500 to-pink-500' },
+        { id: 'inProgress', title: 'In Progress', gradient: 'from-sky-500 to-cyan-400' },
+        { id: 'review', title: 'Review', gradient: 'from-amber-500 to-orange-500' },
+        { id: 'done', title: 'Done', gradient: 'from-emerald-500 to-teal-500' }
+      ];
+
+      // DOM references reused throughout the script.
+      const boardEl = document.getElementById('board');
+      const confirmModalEl = document.getElementById('confirmModal');
+      const confirmMessageEl = document.getElementById('confirmMessage');
+      const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+      const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+      const confettiLayerEl = document.getElementById('confettiLayer');
+
+      let state = loadState();          // Application state (cards grouped by column id).
+      let pendingDeletion = null;       // Stores card info awaiting confirmation.
+      let dragPayload = null;           // Tracks the card currently being dragged.
+
+      initializeBoard();                // Normalize state and render immediately.
+
+      // --- Event wiring ----------------------------------------------------
+      boardEl.addEventListener('click', handleBoardClick);
+      confirmDeleteBtn.addEventListener('click', () => {
+        if (!pendingDeletion) return;
+        deleteCard(pendingDeletion.columnId, pendingDeletion.cardId);
+        pendingDeletion = null;
+        closeConfirmModal();
+      });
+
+      cancelDeleteBtn.addEventListener('click', () => {
+        pendingDeletion = null;
+        closeConfirmModal();
+      });
+
+      confirmModalEl.addEventListener('click', (event) => {
+        if (event.target === confirmModalEl) {
+          pendingDeletion = null;
+          closeConfirmModal();
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !confirmModalEl.classList.contains('hidden')) {
+          pendingDeletion = null;
+          closeConfirmModal();
+        }
+      });
+
+      // --- Initialization helpers -----------------------------------------
+      function initializeBoard() {
+        ensureColumnsExist();
+        if (isStateEmpty()) {
+          state = createDefaultState(); // Populate dummy cards when nothing exists.
+          persistState();
+        }
+        renderBoard();
+      }
+
+      function ensureColumnsExist() {
+        columnsConfig.forEach((column) => {
+          if (!Array.isArray(state[column.id])) {
+            state[column.id] = [];
+          }
+        });
+      }
+
+      function isStateEmpty() {
+        return columnsConfig.every((column) => (state[column.id] ?? []).length === 0);
+      }
+
+      // --- Persistence -----------------------------------------------------
+      function loadState() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) return JSON.parse(saved);
+        } catch (error) {
+          console.warn('Failed to load saved kanban state:', error);
+        }
+        return {};
+      }
+
+      function persistState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      // --- Rendering -------------------------------------------------------
+      function renderBoard() {
+        boardEl.innerHTML = '';
+
+        columnsConfig.forEach((column) => {
+          const columnEl = document.createElement('section');
+          columnEl.className = 'kanban-column flex flex-col rounded-3xl border border-white/10 bg-white/5/50 backdrop-blur-xl p-5 shadow-[0_20px_60px_rgba(15,23,42,0.55)]';
+
+          // Column header with gradient ribbon and badge.
+          const headerEl = document.createElement('div');
+          headerEl.className = `bg-gradient-to-r ${column.gradient} rounded-2xl p-4 text-sm font-semibold tracking-wide uppercase text-white shadow-lg`;
+          headerEl.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span>${column.title}</span>
+              <span class="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">${state[column.id].length}</span>
+            </div>
+          `;
+          columnEl.appendChild(headerEl);
+
+          // Drop zone holds cards and exposes drag events.
+          const dropZone = document.createElement('div');
+          dropZone.dataset.dropZone = column.id;
+          dropZone.className = 'mt-4 flex-1 space-y-3 min-h-[220px]';
+          dropZone.addEventListener('dragover', handleDragOver);
+          dropZone.addEventListener('dragenter', handleDragEnter);
+          dropZone.addEventListener('dragleave', handleDragLeave);
+          dropZone.addEventListener('drop', handleDrop);
+
+          state[column.id].forEach((card) => dropZone.appendChild(createCardElement(card, column.id)));
+          columnEl.appendChild(dropZone);
+
+          // Add-card controls.
+          const controlsEl = document.createElement('div');
+          controlsEl.className = 'mt-4 space-y-3';
+          controlsEl.innerHTML = `
+            <button
+              type="button"
+              data-action="show-add"
+              data-column="${column.id}"
+              class="w-full rounded-2xl border border-dashed border-white/30 px-4 py-3 text-sm font-semibold text-white/80 hover:text-white hover:border-white/70 transition flex items-center justify-center gap-2"
+            >
+              <span class="text-lg">＋</span> Add card
+            </button>
+            <div class="hidden rounded-2xl border border-white/10 bg-white/5 p-3 space-y-3" data-add-form="${column.id}">
+              <textarea
+                data-add-input="${column.id}"
+                rows="2"
+                class="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none focus:ring-0"
+                placeholder="Describe the new task..."
+              ></textarea>
+              <div class="flex gap-3">
+                <button
+                  type="button"
+                  data-action="confirm-add"
+                  data-column="${column.id}"
+                  class="flex-1 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  data-action="cancel-add"
+                  data-column="${column.id}"
+                  class="flex-1 rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold text-white/70 hover:text-white hover:border-white/40 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          `;
+          columnEl.appendChild(controlsEl);
+
+          boardEl.appendChild(columnEl);
+        });
+      }
+
+      function createCardElement(card, columnId) {
+        const cardEl = document.createElement('article');
+        cardEl.className = 'kanban-card group rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-4 shadow-lg shadow-slate-900/40';
+        cardEl.dataset.cardId = card.id;
+        cardEl.dataset.columnId = columnId;
+        cardEl.setAttribute('draggable', 'true');
+
+        cardEl.addEventListener('dragstart', handleDragStart);
+        cardEl.addEventListener('dragend', handleDragEnd);
+
+        const textEl = document.createElement('div');
+        textEl.className = 'text-sm text-slate-100 leading-relaxed';
+        textEl.contentEditable = 'true';
+        textEl.spellcheck = true;
+        textEl.innerText = card.text;
+
+        // Disable dragging while editing to prevent conflicts.
+        textEl.addEventListener('focus', () => {
+          cardEl.setAttribute('draggable', 'false');
+        });
+        textEl.addEventListener('blur', (event) => {
+          cardEl.setAttribute('draggable', 'true');
+          const updated = event.target.innerText.trim() || 'Untitled card';
+          updateCardText(card.id, updated);
+        });
+        textEl.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        });
+
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'mt-3 flex items-center justify-between text-xs text-slate-400';
+
+        actionsEl.innerHTML = `
+          <span class="uppercase tracking-[0.2em] text-[0.6rem] text-slate-500">Drag me</span>
+          <button
+            type="button"
+            class="rounded-2xl px-3 py-1 text-xs font-semibold text-rose-200 bg-rose-500/10 border border-transparent hover:border-rose-300 hover:bg-rose-500/20 transition"
+          >
+            Delete
+          </button>
+        `;
+
+        actionsEl.querySelector('button').addEventListener('click', () => {
+          openDeleteConfirm(columnId, card.id, card.text);
+        });
+
+        cardEl.appendChild(textEl);
+        cardEl.appendChild(actionsEl);
+        return cardEl;
+      }
+
+      // --- Card CRUD -------------------------------------------------------
+      function addCard(columnId, text) {
+        const card = { id: createId(), text };
+        state[columnId].push(card);
+        persistState();
+        renderBoard();
+      }
+
+      function updateCardText(cardId, newText) {
+        columnsConfig.some((column) => {
+          const card = state[column.id].find((c) => c.id === cardId);
+          if (card) {
+            card.text = newText;
+            persistState();
+            renderBoard();
+            return true;
+          }
+          return false;
+        });
+      }
+
+      function deleteCard(columnId, cardId) {
+        state[columnId] = state[columnId].filter((card) => card.id !== cardId);
+        persistState();
+        renderBoard();
+      }
+
+      function moveCard(cardId, targetColumnId) {
+        let sourceColumnId = null;
+        let cardIndex = -1;
+
+        columnsConfig.some((column) => {
+          const idx = state[column.id].findIndex((card) => card.id === cardId);
+          if (idx > -1) {
+            sourceColumnId = column.id;
+            cardIndex = idx;
+            return true;
+          }
+          return false;
+        });
+
+        if (sourceColumnId === null || sourceColumnId === targetColumnId) return;
+
+        const [cardData] = state[sourceColumnId].splice(cardIndex, 1);
+        state[targetColumnId].push(cardData);
+        persistState();
+        renderBoard();
+
+        if (targetColumnId === 'done') {
+          triggerConfetti();
+        }
+      }
+
+      // --- Event handlers --------------------------------------------------
+      function handleBoardClick(event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const columnId = button.dataset.column;
+        const action = button.dataset.action;
+
+        if (!columnId && action !== 'show-add' && action !== 'confirm-add' && action !== 'cancel-add') return;
+
+        switch (action) {
+          case 'show-add':
+            showAddForm(columnId);
+            break;
+          case 'confirm-add':
+            handleAddConfirm(columnId);
+            break;
+          case 'cancel-add':
+            hideAddForm(columnId);
+            break;
+          default:
+            break;
+        }
+      }
+
+      function handleAddConfirm(columnId) {
+        const form = boardEl.querySelector(`[data-add-form="${columnId}"]`);
+        if (!form) return;
+        const textarea = form.querySelector(`[data-add-input="${columnId}"]`);
+        const value = textarea.value.trim();
+        if (!value) return;
+        addCard(columnId, value);
+        textarea.value = '';
+        hideAddForm(columnId);
+      }
+
+      function showAddForm(columnId) {
+        const form = boardEl.querySelector(`[data-add-form="${columnId}"]`);
+        if (!form) return;
+        form.classList.remove('hidden');
+        const textarea = form.querySelector('textarea');
+        setTimeout(() => textarea.focus(), 0);
+      }
+
+      function hideAddForm(columnId) {
+        const form = boardEl.querySelector(`[data-add-form="${columnId}"]`);
+        if (!form) return;
+        const textarea = form.querySelector('textarea');
+        textarea.value = '';
+        form.classList.add('hidden');
+      }
+
+      function handleDragStart(event) {
+        const cardId = event.currentTarget.dataset.cardId;
+        const fromColumn = event.currentTarget.dataset.columnId;
+        dragPayload = { cardId, fromColumn };
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', cardId);
+        event.currentTarget.classList.add('opacity-60');
+      }
+
+      function handleDragEnd(event) {
+        dragPayload = null;
+        event.currentTarget.classList.remove('opacity-60');
+        document.querySelectorAll('.drop-target-active').forEach((zone) => zone.classList.remove('drop-target-active'));
+      }
+
+      function handleDragOver(event) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+      }
+
+      function handleDragEnter(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('drop-target-active');
+      }
+
+      function handleDragLeave(event) {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          event.currentTarget.classList.remove('drop-target-active');
+        }
+      }
+
+      function handleDrop(event) {
+        event.preventDefault();
+        const targetColumnId = event.currentTarget.dataset.dropZone;
+        event.currentTarget.classList.remove('drop-target-active');
+        if (!dragPayload) return;
+        moveCard(dragPayload.cardId, targetColumnId);
+      }
+
+      // --- Modal + Confetti -----------------------------------------------
+      function openDeleteConfirm(columnId, cardId, cardText) {
+        pendingDeletion = { columnId, cardId };
+        confirmMessageEl.textContent = `This will permanently delete “${cardText || 'this card'}”.`;
+        confirmModalEl.classList.remove('hidden');
+        confirmModalEl.classList.add('flex');
+      }
+
+      function closeConfirmModal() {
+        confirmModalEl.classList.add('hidden');
+        confirmModalEl.classList.remove('flex');
+      }
+
+      function triggerConfetti() {
+        const colors = ['#f472b6', '#34d399', '#60a5fa', '#facc15', '#c084fc'];
+        const totalPieces = 90;
+
+        for (let i = 0; i < totalPieces; i++) {
+          const piece = document.createElement('span');
+          piece.className = 'confetti-piece';
+          piece.style.left = `${Math.random() * 100}%`;
+          piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+          piece.style.animationDuration = `${2.4 + Math.random() * 1.2}s`;
+          piece.style.animationDelay = `${Math.random() * 0.2}s`;
+          confettiLayerEl.appendChild(piece);
+          setTimeout(() => piece.remove(), 3300);
+        }
+      }
+
+      // --- Utilities -------------------------------------------------------
+      function createDefaultState() {
+        return {
+          backlog: [
+            { id: createId(), text: 'Ideate user onboarding experience' },
+            { id: createId(), text: 'Research competitor analytics dashboards' },
+            { id: createId(), text: 'Outline Q3 growth experiments' }
+          ],
+          inProgress: [
+            { id: createId(), text: 'Draft product requirements for billing revamp' },
+            { id: createId(), text: 'Refine color system tokens' }
+          ],
+          review: [
+            { id: createId(), text: 'QA accessibility checklist' }
+          ],
+          done: [
+            { id: createId(), text: 'Publish June release notes' }
+          ]
+        };
+      }
+
+      function createId() {
+        if (window.crypto?.randomUUID) {
+          return crypto.randomUUID();
+        }
+        return `card-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      }
+    })();
+  </script>
+</body>
+</html>
