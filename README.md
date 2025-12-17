@@ -35,7 +35,7 @@ Permissions for power metrics:
 **2. OpenRouter (API Models)**
 - Create a text file (e.g., `models.txt`) with a list of model names, one per line.
 - Run the script, optionally adjusting concurrency:
-  - `python3 bench_openrouter_models.py models.txt --concurrency 8`
+  - `python3 bench_openrouter_models.py --models_file openrouter_models.txt --concurrency 8`
 - It queries models in parallel (default: 4), recording performance and cost.
 
 **What gets recorded**

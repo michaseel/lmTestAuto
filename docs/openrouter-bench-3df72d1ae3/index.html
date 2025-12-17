@@ -1,26 +1,37 @@
 
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="5">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenRouter Benchmark Report</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: sans-serif; }
-        .table-container { margin: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #f4f4f4; }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LM Studio Bench Report</title>
+  <style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;line-height:1.35;margin:20px;color:#111}
+h1{margin:0 0 8px 0}
+.muted{color:#666}
+table{border-collapse:collapse;width:100%;margin-top:12px}
+th,td{border-bottom:1px solid #eee;padding:8px 10px;text-align:left}
+th{cursor:pointer;user-select:none;background:#fafafa;position:sticky;top:0}
+tr:hover{background:#fcfcfc}
+.tag{display:inline-block;padding:2px 6px;border-radius:6px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:12px;color:#0f172a}
+.toolbar{display:flex;gap:12px;align-items:center;margin:8px 0 4px}
+input[type="search"]{padding:6px 8px;border:1px solid #ddd;border-radius:6px;min-width:280px}
+.small{font-size:12px}
+details{margin:4px 0}
+code{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:1px 4px}
+.nowrap{white-space:nowrap}
+.cols{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.cols label{display:flex;align-items:center;gap:6px;border:1px solid #e2e8f0;padding:4px 8px;border-radius:8px;background:#f8fafc}
+.hidden{display:none}
+</style>
 </head>
-<body class="bg-gray-50">
-    <div class="container mx-auto p-4">
-        <h1 class="text-2xl font-bold mb-4">OpenRouter Benchmark Report</h1>
-        <div id="prompt" class="mb-4 p-4 bg-gray-100 border rounded-md">
-            <h2 class="font-semibold">Prompt:</h2>
-            <pre class="whitespace-pre-wrap">Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).
+<body>
+  <h1>LM Studio Bench Report</h1>
+  <div class="muted small">Generated from 42 result files.</div>
+  <details>
+    <summary><strong>Prompt, Machine & Run Info</strong> (click to expand)</summary>
+    <div id="summary" style="margin:8px 0"></div>
+    <pre style='white-space:pre-wrap'>Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).
 
 Requirements:
 - Columns: Backlog, In Progress, Review, Done.
@@ -38,365 +49,246 @@ Requirements:
 - modern and vibrant design
 
 As answer return the plain HTML of the working application (script and styles included)
+
 </pre>
-        </div>
-        <div id="report-table" class="overflow-x-auto">
-            <table class="table-auto w-full">
-        <thead class="bg-gray-200">
-            <tr>
-                <th class="px-4 py-2">Model</th>
-                <th class="px-4 py-2">Time (s)</th>
-                <th class="px-4 py-2">Tokens/s</th>
-                <th class="px-4 py-2">Cost ($)</th>
-                <th class="px-4 py-2">Prompt Tokens</th>
-                <th class="px-4 py-2">Completion Tokens</th>
-                <th class="px-4 py-2">Output</th>
-            </tr>
-        </thead>
-        <tbody>
-    
-            <tr class="border-t">
-                <td class="border px-4 py-2">anthropic/claude-3.7-sonnet</td>
-                <td class="border px-4 py-2">78.15</td>
-                <td class="border px-4 py-2">83.87</td>
-                <td class="border px-4 py-2">0.0990</td>
-                <td class="border px-4 py-2">218</td>
-                <td class="border px-4 py-2">6554</td>
-                <td class="border px-4 py-2"><a href="anthropic_claude-3.7-sonnet.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">anthropic/claude-opus-4.5</td>
-                <td class="border px-4 py-2">83.59</td>
-                <td class="border px-4 py-2">103.34</td>
-                <td class="border px-4 py-2">0.2170</td>
-                <td class="border px-4 py-2">218</td>
-                <td class="border px-4 py-2">8638</td>
-                <td class="border px-4 py-2"><a href="anthropic_claude-opus-4.5.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">anthropic/claude-sonnet-4</td>
-                <td class="border px-4 py-2">85.91</td>
-                <td class="border px-4 py-2">92.50</td>
-                <td class="border px-4 py-2">0.1198</td>
-                <td class="border px-4 py-2">218</td>
-                <td class="border px-4 py-2">7946</td>
-                <td class="border px-4 py-2"><a href="anthropic_claude-sonnet-4.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">anthropic/claude-sonnet-4.5</td>
-                <td class="border px-4 py-2">61.05</td>
-                <td class="border px-4 py-2">92.10</td>
-                <td class="border px-4 py-2">0.0850</td>
-                <td class="border px-4 py-2">217</td>
-                <td class="border px-4 py-2">5623</td>
-                <td class="border px-4 py-2"><a href="anthropic_claude-sonnet-4.5.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">deepseek/deepseek-chat-v3.1</td>
-                <td class="border px-4 py-2">133.72</td>
-                <td class="border px-4 py-2">28.61</td>
-                <td class="border px-4 py-2">0.0043</td>
-                <td class="border px-4 py-2">195</td>
-                <td class="border px-4 py-2">3825</td>
-                <td class="border px-4 py-2"><a href="deepseek_deepseek-chat-v3.1.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">deepseek/deepseek-v3-0324</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">0</td>
-                <td class="border px-4 py-2">0</td>
-                <td class="border px-4 py-2">N/A</td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">deepseek/deepseek-v3.1</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">0</td>
-                <td class="border px-4 py-2">0</td>
-                <td class="border px-4 py-2">N/A</td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">deepseek/deepseek-v3.2</td>
-                <td class="border px-4 py-2">91.71</td>
-                <td class="border px-4 py-2">76.11</td>
-                <td class="border px-4 py-2">0.0028</td>
-                <td class="border px-4 py-2">195</td>
-                <td class="border px-4 py-2">6980</td>
-                <td class="border px-4 py-2"><a href="deepseek_deepseek-v3.2.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">deepseek/deepseek-v3.2-exp</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">0</td>
-                <td class="border px-4 py-2">0</td>
-                <td class="border px-4 py-2">N/A</td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">deepseek/deepseek-v3.2-speciale</td>
-                <td class="border px-4 py-2">326.02</td>
-                <td class="border px-4 py-2">50.04</td>
-                <td class="border px-4 py-2">0.0066</td>
-                <td class="border px-4 py-2">192</td>
-                <td class="border px-4 py-2">16313</td>
-                <td class="border px-4 py-2"><a href="deepseek_deepseek-v3.2-speciale.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">google/gemini-2.0-flash</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">N/A</td>
-                <td class="border px-4 py-2">0</td>
-                <td class="border px-4 py-2">0</td>
-                <td class="border px-4 py-2">N/A</td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">google/gemini-2.5-flash</td>
-                <td class="border px-4 py-2">24.30</td>
-                <td class="border px-4 py-2">247.34</td>
-                <td class="border px-4 py-2">0.0151</td>
-                <td class="border px-4 py-2">199</td>
-                <td class="border px-4 py-2">6010</td>
-                <td class="border px-4 py-2"><a href="google_gemini-2.5-flash.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">google/gemini-2.5-flash-lite</td>
-                <td class="border px-4 py-2">17.34</td>
-                <td class="border px-4 py-2">338.68</td>
-                <td class="border px-4 py-2">0.0024</td>
-                <td class="border px-4 py-2">199</td>
-                <td class="border px-4 py-2">5872</td>
-                <td class="border px-4 py-2"><a href="google_gemini-2.5-flash-lite.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">google/gemini-2.5-flash-lite-preview-09-2025</td>
-                <td class="border px-4 py-2">10.92</td>
-                <td class="border px-4 py-2">532.09</td>
-                <td class="border px-4 py-2">0.0023</td>
-                <td class="border px-4 py-2">198</td>
-                <td class="border px-4 py-2">5811</td>
-                <td class="border px-4 py-2"><a href="google_gemini-2.5-flash-lite-preview-09-2025.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">google/gemini-2.5-pro</td>
-                <td class="border px-4 py-2">78.77</td>
-                <td class="border px-4 py-2">106.71</td>
-                <td class="border px-4 py-2">0.0843</td>
-                <td class="border px-4 py-2">199</td>
-                <td class="border px-4 py-2">8405</td>
-                <td class="border px-4 py-2"><a href="google_gemini-2.5-pro.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">google/gemini-3-pro-preview</td>
-                <td class="border px-4 py-2">71.83</td>
-                <td class="border px-4 py-2">121.85</td>
-                <td class="border px-4 py-2">0.1054</td>
-                <td class="border px-4 py-2">199</td>
-                <td class="border px-4 py-2">8752</td>
-                <td class="border px-4 py-2"><a href="google_gemini-3-pro-preview.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">moonshotai/kimi-k2-thinking</td>
-                <td class="border px-4 py-2">33.69</td>
-                <td class="border px-4 py-2">234.84</td>
-                <td class="border px-4 py-2">0.0199</td>
-                <td class="border px-4 py-2">196</td>
-                <td class="border px-4 py-2">7911</td>
-                <td class="border px-4 py-2"><a href="moonshotai_kimi-k2-thinking.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-4.1-mini</td>
-                <td class="border px-4 py-2">76.41</td>
-                <td class="border px-4 py-2">63.24</td>
-                <td class="border px-4 py-2">0.0078</td>
-                <td class="border px-4 py-2">195</td>
-                <td class="border px-4 py-2">4832</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-4.1-mini.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-4o-mini</td>
-                <td class="border px-4 py-2">21.92</td>
-                <td class="border px-4 py-2">75.54</td>
-                <td class="border px-4 py-2">0.0010</td>
-                <td class="border px-4 py-2">195</td>
-                <td class="border px-4 py-2">1656</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-4o-mini.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-5</td>
-                <td class="border px-4 py-2">96.82</td>
-                <td class="border px-4 py-2">99.84</td>
-                <td class="border px-4 py-2">0.0969</td>
-                <td class="border px-4 py-2">194</td>
-                <td class="border px-4 py-2">9667</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-5.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-5-codex</td>
-                <td class="border px-4 py-2">304.15</td>
-                <td class="border px-4 py-2">61.27</td>
-                <td class="border px-4 py-2">0.1866</td>
-                <td class="border px-4 py-2">194</td>
-                <td class="border px-4 py-2">18636</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-5-codex.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-5-mini</td>
-                <td class="border px-4 py-2">126.82</td>
-                <td class="border px-4 py-2">62.95</td>
-                <td class="border px-4 py-2">0.0160</td>
-                <td class="border px-4 py-2">194</td>
-                <td class="border px-4 py-2">7983</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-5-mini.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-5.1</td>
-                <td class="border px-4 py-2">310.48</td>
-                <td class="border px-4 py-2">52.78</td>
-                <td class="border px-4 py-2">0.1641</td>
-                <td class="border px-4 py-2">194</td>
-                <td class="border px-4 py-2">16388</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-5.1.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-5.1-codex</td>
-                <td class="border px-4 py-2">176.36</td>
-                <td class="border px-4 py-2">82.02</td>
-                <td class="border px-4 py-2">0.1449</td>
-                <td class="border px-4 py-2">194</td>
-                <td class="border px-4 py-2">14464</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-5.1-codex.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-5.1-codex-max</td>
-                <td class="border px-4 py-2">72.67</td>
-                <td class="border px-4 py-2">71.08</td>
-                <td class="border px-4 py-2">0.0519</td>
-                <td class="border px-4 py-2">194</td>
-                <td class="border px-4 py-2">5165</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-5.1-codex-max.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">openai/gpt-oss-120b</td>
-                <td class="border px-4 py-2">21.07</td>
-                <td class="border px-4 py-2">154.64</td>
-                <td class="border px-4 py-2">0.0020</td>
-                <td class="border px-4 py-2">259</td>
-                <td class="border px-4 py-2">3259</td>
-                <td class="border px-4 py-2"><a href="openai_gpt-oss-120b.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">qwen/qwen3-coder-flash</td>
-                <td class="border px-4 py-2">46.09</td>
-                <td class="border px-4 py-2">112.11</td>
-                <td class="border px-4 py-2">0.0078</td>
-                <td class="border px-4 py-2">197</td>
-                <td class="border px-4 py-2">5167</td>
-                <td class="border px-4 py-2"><a href="qwen_qwen3-coder-flash.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">qwen/qwen3-coder-plus</td>
-                <td class="border px-4 py-2">55.07</td>
-                <td class="border px-4 py-2">68.62</td>
-                <td class="border px-4 py-2">0.0191</td>
-                <td class="border px-4 py-2">197</td>
-                <td class="border px-4 py-2">3779</td>
-                <td class="border px-4 py-2"><a href="qwen_qwen3-coder-plus.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">qwen/qwen3-max</td>
-                <td class="border px-4 py-2">106.08</td>
-                <td class="border px-4 py-2">41.79</td>
-                <td class="border px-4 py-2">0.0268</td>
-                <td class="border px-4 py-2">197</td>
-                <td class="border px-4 py-2">4433</td>
-                <td class="border px-4 py-2"><a href="qwen_qwen3-max.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">x-ai/grok-4-fast</td>
-                <td class="border px-4 py-2">35.98</td>
-                <td class="border px-4 py-2">94.92</td>
-                <td class="border px-4 py-2">0.0018</td>
-                <td class="border px-4 py-2">300</td>
-                <td class="border px-4 py-2">3415</td>
-                <td class="border px-4 py-2"><a href="x-ai_grok-4-fast.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">x-ai/grok-4.1-fast</td>
-                <td class="border px-4 py-2">113.69</td>
-                <td class="border px-4 py-2">97.43</td>
-                <td class="border px-4 py-2">0.0056</td>
-                <td class="border px-4 py-2">339</td>
-                <td class="border px-4 py-2">11077</td>
-                <td class="border px-4 py-2"><a href="x-ai_grok-4.1-fast.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">x-ai/grok-code-fast-1</td>
-                <td class="border px-4 py-2">22.98</td>
-                <td class="border px-4 py-2">137.09</td>
-                <td class="border px-4 py-2">0.0048</td>
-                <td class="border px-4 py-2">387</td>
-                <td class="border px-4 py-2">3151</td>
-                <td class="border px-4 py-2"><a href="x-ai_grok-code-fast-1.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">z-ai/glm-4.5</td>
-                <td class="border px-4 py-2">84.52</td>
-                <td class="border px-4 py-2">48.46</td>
-                <td class="border px-4 py-2">0.0083</td>
-                <td class="border px-4 py-2">195</td>
-                <td class="border px-4 py-2">4096</td>
-                <td class="border px-4 py-2"><a href="z-ai_glm-4.5.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        
-            <tr class="border-t">
-                <td class="border px-4 py-2">z-ai/glm-4.6</td>
-                <td class="border px-4 py-2">250.28</td>
-                <td class="border px-4 py-2">20.98</td>
-                <td class="border px-4 py-2">0.0111</td>
-                <td class="border px-4 py-2">191</td>
-                <td class="border px-4 py-2">5250</td>
-                <td class="border px-4 py-2"><a href="z-ai_glm-4.6.html" target="_blank" class="text-blue-600 hover:underline">View</a></td>
-            </tr>
-        </tbody></table>
-        </div>
-        <p class="text-sm text-gray-500 mt-4">Last updated: 2025-12-11 16:42:33</p>
-    </div>
+  </details>
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="Filter by model name">
+    <div class="small muted">Rows: <span id="count"></span></div>
+  </div>
+  <div id="col-toggles" class="cols small"></div>
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th class="col-model" data-key="model">Model</th>
+        <th class="col-timestamp" data-key="timestamp">Timestamp</th>
+        <th class="col-settings" data-key="settings">Settings</th>
+        <th class="col-load_time_seconds" data-key="load_time_seconds">Load s</th>
+        <th class="col-generation_time_seconds" data-key="generation_time_seconds">Gen s</th>
+        <th class="col-tokens_per_second" data-key="tokens_per_second">Tok/s</th>
+        <th class="col-prompt_tokens" data-key="prompt_tokens">Prompt tok</th>
+        <th class="col-completion_tokens" data-key="completion_tokens">Compl tok</th>
+        <th class="col-total_tokens" data-key="total_tokens">Total tok</th>
+        <th class="col-model_size" data-key="model_size">Model size</th>
+        <th class="col-quantization" data-key="quantization">Quantization</th>
+        <th class="col-cpu_w_avg" data-key="cpu_w_avg">CPU W(avg)</th>
+        <th class="col-gpu_w_avg" data-key="gpu_w_avg">GPU W(avg)</th>
+        <th class="col-gpu_w_max" data-key="gpu_w_max">GPU W(peak)</th>
+        <th class="col-gpu_w_min" data-key="gpu_w_min">GPU W(low)</th>
+        <th class="col-ane_w_avg" data-key="ane_w_avg">ANE W(avg)</th>
+        <th class="col-mem_after_load_lms" data-key="mem_after_load_lms">LM RSS Δ load</th>
+        <th class="col-mem_after_gen_lms" data-key="mem_after_gen_lms">LM RSS Δ gen</th>
+        <th class="col-artifacts" data-key="artifacts">Artifacts</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Charts</h2>
+  <div class="small muted">Quick visualizations (auto from data below)</div>
+  <div style="max-width:100%;">
+    <canvas id="chart_tps_gpu" width="900" height="360" style="width:100%;max-width:100%;"></canvas>
+  </div>
+  <div style="height:8px"></div>
+  <div style="max-width:100%;">
+    <canvas id="chart_times" width="900" height="480" style="width:100%;max-width:100%;"></canvas>
+  </div>
+
+  <script>
+  
+const DATA = [{"model": "amazon/nova-2-lite-v1", "timestamp": "2025-12-17T22:10:56.031471", "load_time_seconds": null, "generation_time_seconds": 21.312983749900013, "tokens_per_second": null, "prompt_tokens": 229, "completion_tokens": 4639, "total_tokens": 4868, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/amazon_nova-2-lite-v1.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/amazon_nova-2-lite-v1.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/amazon_nova-2-lite-v1.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/amazon_nova-2-lite-v1.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/amazon_nova-2-lite-v1.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/amazon_nova-2-lite-v1.txt"}, {"model": "anthropic/claude-3.7-sonnet", "timestamp": "2025-10-01T13:29:23.168021", "load_time_seconds": null, "generation_time_seconds": 78.1467344579869, "tokens_per_second": null, "prompt_tokens": 218, "completion_tokens": 6554, "total_tokens": 6772, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-3.7-sonnet.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/anthropic_claude-3.7-sonnet.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-3.7-sonnet.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-3.7-sonnet.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/anthropic_claude-3.7-sonnet.json", "text_url": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-3.7-sonnet.txt"}, {"model": "anthropic/claude-opus-4.5", "timestamp": "2025-12-11T16:33:26.272194", "load_time_seconds": null, "generation_time_seconds": 83.58575458312407, "tokens_per_second": null, "prompt_tokens": 218, "completion_tokens": 8638, "total_tokens": 8856, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/anthropic_claude-opus-4.5.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/anthropic_claude-opus-4.5.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/anthropic_claude-opus-4.5.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/anthropic_claude-opus-4.5.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/anthropic_claude-opus-4.5.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/anthropic_claude-opus-4.5.txt"}, {"model": "anthropic/claude-sonnet-4.5", "timestamp": "2025-10-01T13:29:06.076946", "load_time_seconds": null, "generation_time_seconds": 61.054550625005504, "tokens_per_second": null, "prompt_tokens": 217, "completion_tokens": 5623, "total_tokens": 5840, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.5.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.5.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.5.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.5.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.5.json", "text_url": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.5.txt"}, {"model": "anthropic/claude-sonnet-4", "timestamp": "2025-10-01T13:29:30.928392", "load_time_seconds": null, "generation_time_seconds": 85.90646583298803, "tokens_per_second": null, "prompt_tokens": 218, "completion_tokens": 7946, "total_tokens": 8164, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.json", "text_url": "reports/openrouter-bench-3df72d1ae3/anthropic_claude-sonnet-4.txt"}, {"model": "deepseek/deepseek-chat-v3.1", "timestamp": "2025-10-01T13:30:18.738561", "load_time_seconds": null, "generation_time_seconds": 133.7167064170062, "tokens_per_second": null, "prompt_tokens": 195, "completion_tokens": 3825, "total_tokens": 4020, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/deepseek_deepseek-chat-v3.1.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-chat-v3.1.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/deepseek_deepseek-chat-v3.1.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/deepseek_deepseek-chat-v3.1.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-chat-v3.1.json", "text_url": "reports/openrouter-bench-3df72d1ae3/deepseek_deepseek-chat-v3.1.txt"}, {"model": "deepseek/deepseek-v3-0324", "timestamp": "2025-10-01T13:28:05.448797", "load_time_seconds": null, "generation_time_seconds": null, "tokens_per_second": null, "prompt_tokens": null, "completion_tokens": null, "total_tokens": null, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": "generation_failed: HTTPError: 400 Client Error: Bad Request for url: https://openrouter.ai/api/v1/chat/completions"}, "html_path": null, "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3-0324.json", "raw_text_path": null, "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": null, "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3-0324.json", "text_url": null}, {"model": "deepseek/deepseek-v3.1", "timestamp": "2025-10-01T13:28:05.400273", "load_time_seconds": null, "generation_time_seconds": null, "tokens_per_second": null, "prompt_tokens": null, "completion_tokens": null, "total_tokens": null, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": "generation_failed: HTTPError: 400 Client Error: Bad Request for url: https://openrouter.ai/api/v1/chat/completions"}, "html_path": null, "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3.1.json", "raw_text_path": null, "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": null, "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3.1.json", "text_url": null}, {"model": "deepseek/deepseek-v3.2-exp", "timestamp": "2025-10-01T13:29:08.027361", "load_time_seconds": null, "generation_time_seconds": null, "tokens_per_second": null, "prompt_tokens": null, "completion_tokens": null, "total_tokens": null, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": "generation_failed: JSONDecodeError: Expecting value: line 299 column 1 (char 1639)"}, "html_path": null, "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3.2-exp.json", "raw_text_path": null, "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": null, "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3.2-exp.json", "text_url": null}, {"model": "deepseek/deepseek-v3.2-speciale", "timestamp": "2025-12-11T16:37:51.694434", "load_time_seconds": null, "generation_time_seconds": 326.0170837501064, "tokens_per_second": null, "prompt_tokens": 192, "completion_tokens": 16313, "total_tokens": 16505, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/deepseek_deepseek-v3.2-speciale.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3.2-speciale.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/deepseek_deepseek-v3.2-speciale.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/deepseek_deepseek-v3.2-speciale.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3.2-speciale.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/deepseek_deepseek-v3.2-speciale.txt"}, {"model": "deepseek/deepseek-v3.2", "timestamp": "2025-12-11T16:33:34.396358", "load_time_seconds": null, "generation_time_seconds": 91.71132691716775, "tokens_per_second": null, "prompt_tokens": 195, "completion_tokens": 6980, "total_tokens": 7175, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/deepseek_deepseek-v3.2.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3.2.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/deepseek_deepseek-v3.2.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/deepseek_deepseek-v3.2.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/deepseek_deepseek-v3.2.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/deepseek_deepseek-v3.2.txt"}, {"model": "google/gemini-2.0-flash", "timestamp": "2025-10-01T13:28:05.559355", "load_time_seconds": null, "generation_time_seconds": null, "tokens_per_second": null, "prompt_tokens": null, "completion_tokens": null, "total_tokens": null, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": "generation_failed: HTTPError: 400 Client Error: Bad Request for url: https://openrouter.ai/api/v1/chat/completions"}, "html_path": null, "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.0-flash.json", "raw_text_path": null, "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": null, "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.0-flash.json", "text_url": null}, {"model": "google/gemini-2.5-flash-lite-preview-09-2025", "timestamp": "2025-10-01T13:28:33.826503", "load_time_seconds": null, "generation_time_seconds": 10.921085874986602, "tokens_per_second": null, "prompt_tokens": 198, "completion_tokens": 5811, "total_tokens": 6009, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite-preview-09-2025.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite-preview-09-2025.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite-preview-09-2025.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite-preview-09-2025.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite-preview-09-2025.json", "text_url": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite-preview-09-2025.txt"}, {"model": "google/gemini-2.5-flash-lite", "timestamp": "2025-10-01T13:28:22.901454", "load_time_seconds": null, "generation_time_seconds": 17.3381462499965, "tokens_per_second": null, "prompt_tokens": 199, "completion_tokens": 5872, "total_tokens": 6071, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite.json", "text_url": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash-lite.txt"}, {"model": "google/gemini-2.5-flash", "timestamp": "2025-10-01T13:28:29.750179", "load_time_seconds": null, "generation_time_seconds": 24.298814499983564, "tokens_per_second": null, "prompt_tokens": 199, "completion_tokens": 6010, "total_tokens": 6209, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash.json", "text_url": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-flash.txt"}, {"model": "google/gemini-2.5-pro", "timestamp": "2025-10-01T13:29:23.790114", "load_time_seconds": null, "generation_time_seconds": 78.76770404100535, "tokens_per_second": null, "prompt_tokens": 199, "completion_tokens": 8405, "total_tokens": 8604, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-pro.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.5-pro.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-pro.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-pro.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/google_gemini-2.5-pro.json", "text_url": "reports/openrouter-bench-3df72d1ae3/google_gemini-2.5-pro.txt"}, {"model": "google/gemini-3-flash-preview", "timestamp": "2025-12-17T22:10:49.282002", "load_time_seconds": null, "generation_time_seconds": 14.562170958146453, "tokens_per_second": null, "prompt_tokens": 196, "completion_tokens": 3573, "total_tokens": 3769, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/google_gemini-3-flash-preview.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/google_gemini-3-flash-preview.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/google_gemini-3-flash-preview.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/google_gemini-3-flash-preview.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/google_gemini-3-flash-preview.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/google_gemini-3-flash-preview.txt"}, {"model": "google/gemini-3-pro-preview", "timestamp": "2025-12-11T16:33:14.511717", "load_time_seconds": null, "generation_time_seconds": 71.82504062494263, "tokens_per_second": null, "prompt_tokens": 199, "completion_tokens": 8752, "total_tokens": 8951, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/google_gemini-3-pro-preview.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/google_gemini-3-pro-preview.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/google_gemini-3-pro-preview.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/google_gemini-3-pro-preview.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/google_gemini-3-pro-preview.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/google_gemini-3-pro-preview.txt"}, {"model": "mistralai/devstral-2512", "timestamp": "2025-12-17T22:10:34.939597", "load_time_seconds": null, "generation_time_seconds": null, "tokens_per_second": null, "prompt_tokens": null, "completion_tokens": null, "total_tokens": null, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": "generation_failed: HTTPError: 404 Client Error: Not Found for url: https://openrouter.ai/api/v1/chat/completions"}, "html_path": null, "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/mistralai_devstral-2512.json", "raw_text_path": null, "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": null, "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/mistralai_devstral-2512.json", "text_url": null}, {"model": "moonshotai/kimi-k2-thinking", "timestamp": "2025-12-11T16:33:48.203066", "load_time_seconds": null, "generation_time_seconds": 33.68712587468326, "tokens_per_second": null, "prompt_tokens": 196, "completion_tokens": 7911, "total_tokens": 8107, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/moonshotai_kimi-k2-thinking.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/moonshotai_kimi-k2-thinking.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/moonshotai_kimi-k2-thinking.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/moonshotai_kimi-k2-thinking.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/moonshotai_kimi-k2-thinking.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/moonshotai_kimi-k2-thinking.txt"}, {"model": "nvidia/nemotron-3-nano-30b-a3b:free", "timestamp": "2025-12-17T22:10:54.791133", "load_time_seconds": null, "generation_time_seconds": 20.071922708302736, "tokens_per_second": null, "prompt_tokens": 205, "completion_tokens": 4890, "total_tokens": 5095, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/nvidia_nemotron-3-nano-30b-a3b_free.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/nvidia_nemotron-3-nano-30b-a3b_free.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/nvidia_nemotron-3-nano-30b-a3b_free.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/nvidia_nemotron-3-nano-30b-a3b_free.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/nvidia_nemotron-3-nano-30b-a3b_free.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/nvidia_nemotron-3-nano-30b-a3b_free.txt"}, {"model": "openai/gpt-4.1-mini", "timestamp": "2025-10-01T13:29:46.159208", "load_time_seconds": null, "generation_time_seconds": 76.40565208301996, "tokens_per_second": null, "prompt_tokens": 195, "completion_tokens": 4832, "total_tokens": 5027, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-4.1-mini.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-4.1-mini.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-4.1-mini.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-4.1-mini.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-4.1-mini.json", "text_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-4.1-mini.txt"}, {"model": "openai/gpt-4o-mini", "timestamp": "2025-10-01T13:28:55.753047", "load_time_seconds": null, "generation_time_seconds": 21.92326250000042, "tokens_per_second": null, "prompt_tokens": 195, "completion_tokens": 1656, "total_tokens": 1851, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-4o-mini.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-4o-mini.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-4o-mini.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-4o-mini.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-4o-mini.json", "text_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-4o-mini.txt"}, {"model": "openai/gpt-5-codex", "timestamp": "2025-10-01T13:33:59.904338", "load_time_seconds": null, "generation_time_seconds": 304.1468140420038, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 18636, "total_tokens": 18830, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5-codex.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5-codex.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5-codex.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5-codex.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5-codex.json", "text_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5-codex.txt"}, {"model": "openai/gpt-5-mini", "timestamp": "2025-10-01T13:31:14.848561", "load_time_seconds": null, "generation_time_seconds": 126.81519345898414, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 7983, "total_tokens": 8177, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5-mini.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5-mini.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5-mini.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5-mini.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5-mini.json", "text_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5-mini.txt"}, {"model": "openai/gpt-5.1-codex-max", "timestamp": "2025-12-11T16:33:15.357234", "load_time_seconds": null, "generation_time_seconds": 72.66934687504545, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 5165, "total_tokens": 5359, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1-codex-max.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.1-codex-max.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1-codex-max.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1-codex-max.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.1-codex-max.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1-codex-max.txt"}, {"model": "openai/gpt-5.1-codex", "timestamp": "2025-12-11T16:34:59.043084", "load_time_seconds": null, "generation_time_seconds": 176.35599495796487, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 14464, "total_tokens": 14658, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1-codex.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.1-codex.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1-codex.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1-codex.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.1-codex.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1-codex.txt"}, {"model": "openai/gpt-5.1", "timestamp": "2025-12-11T16:37:13.173315", "load_time_seconds": null, "generation_time_seconds": 310.48350933380425, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 16388, "total_tokens": 16582, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.1.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.1.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.1.txt"}, {"model": "openai/gpt-5.2-chat", "timestamp": "2025-12-17T22:10:54.640234", "load_time_seconds": null, "generation_time_seconds": 19.921610415913165, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 2216, "total_tokens": 2410, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2-chat.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.2-chat.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2-chat.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2-chat.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.2-chat.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2-chat.txt"}, {"model": "openai/gpt-5.2-pro", "timestamp": "2025-12-17T22:17:27.337490", "load_time_seconds": null, "generation_time_seconds": 412.6158975409344, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 9394, "total_tokens": 9588, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2-pro.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.2-pro.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2-pro.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2-pro.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.2-pro.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2-pro.txt"}, {"model": "openai/gpt-5.2", "timestamp": "2025-12-17T22:12:20.491200", "load_time_seconds": null, "generation_time_seconds": 105.77126670908183, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 7784, "total_tokens": 7978, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.2.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.2.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/openai_gpt-5.2.txt"}, {"model": "openai/gpt-5", "timestamp": "2025-10-01T13:30:42.906241", "load_time_seconds": null, "generation_time_seconds": 96.82435429200996, "tokens_per_second": null, "prompt_tokens": 194, "completion_tokens": 9667, "total_tokens": 9861, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-5.json", "text_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-5.txt"}, {"model": "openai/gpt-oss-120b", "timestamp": "2025-10-01T13:29:44.246617", "load_time_seconds": null, "generation_time_seconds": 21.074322291009594, "tokens_per_second": null, "prompt_tokens": 259, "completion_tokens": 3259, "total_tokens": 3518, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-oss-120b.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/openai_gpt-oss-120b.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/openai_gpt-oss-120b.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-oss-120b.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/openai_gpt-oss-120b.json", "text_url": "reports/openrouter-bench-3df72d1ae3/openai_gpt-oss-120b.txt"}, {"model": "qwen/qwen3-coder-flash", "timestamp": "2025-10-01T13:30:09.881643", "load_time_seconds": null, "generation_time_seconds": 46.087875041004736, "tokens_per_second": null, "prompt_tokens": 197, "completion_tokens": 5167, "total_tokens": 5364, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-flash.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-flash.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-flash.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-flash.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-flash.json", "text_url": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-flash.txt"}, {"model": "qwen/qwen3-coder-plus", "timestamp": "2025-10-01T13:30:26.000982", "load_time_seconds": null, "generation_time_seconds": 55.06998908298556, "tokens_per_second": null, "prompt_tokens": 197, "completion_tokens": 3779, "total_tokens": 3976, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-plus.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-plus.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-plus.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-plus.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-plus.json", "text_url": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-coder-plus.txt"}, {"model": "qwen/qwen3-max", "timestamp": "2025-10-01T13:31:30.330008", "load_time_seconds": null, "generation_time_seconds": 106.07829725000192, "tokens_per_second": null, "prompt_tokens": 197, "completion_tokens": 4433, "total_tokens": 4630, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-max.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/qwen_qwen3-max.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-max.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-max.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/qwen_qwen3-max.json", "text_url": "reports/openrouter-bench-3df72d1ae3/qwen_qwen3-max.txt"}, {"model": "x-ai/grok-4-fast", "timestamp": "2025-10-01T13:30:22.140446", "load_time_seconds": null, "generation_time_seconds": 35.9772979580157, "tokens_per_second": null, "prompt_tokens": 300, "completion_tokens": 3415, "total_tokens": 3715, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/x-ai_grok-4-fast.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/x-ai_grok-4-fast.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/x-ai_grok-4-fast.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/x-ai_grok-4-fast.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/x-ai_grok-4-fast.json", "text_url": "reports/openrouter-bench-3df72d1ae3/x-ai_grok-4-fast.txt"}, {"model": "x-ai/grok-4.1-fast", "timestamp": "2025-12-11T16:33:56.381802", "load_time_seconds": null, "generation_time_seconds": 113.69385162508115, "tokens_per_second": null, "prompt_tokens": 339, "completion_tokens": 11077, "total_tokens": 11416, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/x-ai_grok-4.1-fast.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/x-ai_grok-4.1-fast.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/x-ai_grok-4.1-fast.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/x-ai_grok-4.1-fast.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/x-ai_grok-4.1-fast.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/x-ai_grok-4.1-fast.txt"}, {"model": "x-ai/grok-code-fast-1", "timestamp": "2025-10-01T13:30:24.176179", "load_time_seconds": null, "generation_time_seconds": 14.290313709003385, "tokens_per_second": null, "prompt_tokens": 387, "completion_tokens": 3005, "total_tokens": 3392, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/x-ai_grok-code-fast-1.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/x-ai_grok-code-fast-1.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/x-ai_grok-code-fast-1.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/x-ai_grok-code-fast-1.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/x-ai_grok-code-fast-1.json", "text_url": "reports/openrouter-bench-3df72d1ae3/x-ai_grok-code-fast-1.txt"}, {"model": "xiaomi/mimo-v2-flash:free", "timestamp": "2025-12-17T22:11:03.137947", "load_time_seconds": null, "generation_time_seconds": 28.418469582684338, "tokens_per_second": null, "prompt_tokens": 197, "completion_tokens": 4852, "total_tokens": 5049, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/xiaomi_mimo-v2-flash_free.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/xiaomi_mimo-v2-flash_free.json", "raw_text_path": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/xiaomi_mimo-v2-flash_free.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/xiaomi_mimo-v2-flash_free.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/xiaomi_mimo-v2-flash_free.json", "text_url": "../old/lmTestAuto/reports/openrouter-bench-9465ba8096/xiaomi_mimo-v2-flash_free.txt"}, {"model": "z-ai/glm-4.5", "timestamp": "2025-10-01T13:31:43.258829", "load_time_seconds": null, "generation_time_seconds": 84.5152714169817, "tokens_per_second": null, "prompt_tokens": 195, "completion_tokens": 4096, "total_tokens": 4291, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/z-ai_glm-4.5.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/z-ai_glm-4.5.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/z-ai_glm-4.5.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/z-ai_glm-4.5.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/z-ai_glm-4.5.json", "text_url": "reports/openrouter-bench-3df72d1ae3/z-ai_glm-4.5.txt"}, {"model": "z-ai/glm-4.6", "timestamp": "2025-10-01T13:34:32.429512", "load_time_seconds": null, "generation_time_seconds": 250.28405741698225, "tokens_per_second": null, "prompt_tokens": 191, "completion_tokens": 5250, "total_tokens": 5441, "cpu_w_avg": null, "cpu_w_max": null, "gpu_w_avg": null, "gpu_w_max": null, "gpu_w_min": null, "ane_w_avg": null, "ane_w_max": null, "samplers": null, "mem_after_load_lms": null, "mem_after_gen_lms": null, "mem_after_gen_vs_load_lms": null, "mem_after_load_sys": null, "mem_after_gen_sys": null, "errors": {"generation": null}, "html_path": "reports/openrouter-bench-3df72d1ae3/z-ai_glm-4.6.html", "log_path": null, "raw_json_path": "docs/openrouter-bench-3df72d1ae3/z-ai_glm-4.6.json", "raw_text_path": "reports/openrouter-bench-3df72d1ae3/z-ai_glm-4.6.txt", "model_size": null, "quantization": null, "settings": {"temperature": 0.6, "top_p": 0.95, "max_tokens": -1, "num_ctx": null, "gpu_setting": null}, "html_url": "reports/openrouter-bench-3df72d1ae3/z-ai_glm-4.6.html", "log_url": null, "json_url": "docs/openrouter-bench-3df72d1ae3/z-ai_glm-4.6.json", "text_url": "reports/openrouter-bench-3df72d1ae3/z-ai_glm-4.6.txt"}];
+const SUMMARY = {"models": 42, "total_generation_time_seconds": 3632.3462647478445, "avg_generation_time_seconds": 86.48443487494868, "machine": {"cpu": "Apple M4 Max", "gpu": "Apple M4 Max", "ram_bytes": 137438953472}};
+
+let sortKey = 'model';
+let sortDir = 1; // 1 asc, -1 desc
+
+function num(v){ return (v===null||v===undefined||v==='-'||v==='')?null:Number(v); }
+
+function formatBytes(b){
+  if (b==null) return '-';
+  const abs = Math.abs(b);
+  const sign = b < 0 ? '-' : '';
+  if (abs < 1024) return sign + abs + ' B';
+  const units=['KB','MB','GB','TB'];
+  let u=-1; let v=abs;
+  do{ v/=1024; u++; }while(v>=1024&&u<units.length-1);
+  return sign + v.toFixed(2)+' '+units[u];
+}
+
+function render(){
+  const q = document.querySelector('#search').value.toLowerCase();
+  const tbody = document.querySelector('#tbl tbody');
+  tbody.innerHTML='';
+  let rows = DATA.slice();
+  rows.sort((a,b)=>{
+    const av=a[sortKey], bv=b[sortKey];
+    const an = num(av), bn = num(bv);
+    if(an!=null && bn!=null){ return (an-bn)*sortDir; }
+    return String(av||'').localeCompare(String(bv||''))*sortDir;
+  });
+  for(const r of rows){
+    if(q && !(String(r.model).toLowerCase().includes(q))) continue;
+    const tr = document.createElement('tr');
+    const linkHtml = r.html_path ? `<a href="${r.html_url}" target="_blank">HTML</a>` : '<span class="muted">n/a</span>';
+    const linkText = r.raw_text_path ? `<a href="${r.text_url}" target="_blank">Text</a>` : '<span class="muted">n/a</span>';
+    tr.innerHTML = `
+      <td class="col-model nowrap">${r.model || '-'}</td>
+      <td class="col-timestamp">${r.timestamp ? new Date(r.timestamp).toLocaleString() : '-'}</td>
+      <td class="col-settings nowrap">${r.settings.gpu_setting?`<span class="tag">gpu:${r.settings.gpu_setting}</span>`:''} <span class="tag">T=${r.settings.temperature ?? '-'}</span> <span class="tag">p=${r.settings.top_p ?? '-'}</span></td>
+      <td class="col-load_time_seconds">${r.load_time_seconds?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-generation_time_seconds">${r.generation_time_seconds?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-tokens_per_second">${r.tokens_per_second?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-prompt_tokens">${r.prompt_tokens ?? '-'}</td>
+      <td class="col-completion_tokens">${r.completion_tokens ?? '-'}</td>
+      <td class="col-total_tokens">${r.total_tokens ?? '-'}</td>
+      <td class="col-model_size">${r.model_size ?? '-'}</td>
+      <td class="col-quantization">${r.quantization ?? '-'}</td>
+      <td class="col-cpu_w_avg">${r.cpu_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_avg">${r.gpu_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_max">${r.gpu_w_max?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-gpu_w_min">${r.gpu_w_min?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-ane_w_avg">${r.ane_w_avg?.toFixed?.(2) ?? '-'}</td>
+      <td class="col-mem_after_load_lms">${formatBytes(r.mem_after_load_lms)}</td>
+      <td class="col-mem_after_gen_lms">${formatBytes(r.mem_after_gen_lms)}</td>
+      <td class="col-artifacts">${linkHtml} · ${linkText} · <a href="${r.json_url}" target="_blank">JSON</a></td>
+    `;
+    tbody.appendChild(tr);
+  }
+  document.querySelector('#count').textContent = rows.length;
+  applyColumnVisibility();
+}
+
+function setupSort(){
+  document.querySelectorAll('#tbl th').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const key = th.dataset.key;
+      if(!key) return;
+      if(sortKey===key){ sortDir*=-1; } else { sortKey=key; sortDir=1; }
+      render();
+    });
+  });
+}
+const DEFAULT_HIDDEN = new Set(["timestamp","settings","total_tokens","cpu_w_avg","ane_w_avg"]);
+
+function setupColumnToggles(){
+  const wrapper = document.querySelector('#col-toggles');
+  const cols = Array.from(document.querySelectorAll('#tbl th')).map(th=>({ key: th.dataset.key, label: th.textContent }));
+  for(const c of cols){
+    if(!c.key) continue;
+    const id = `col_${c.key}`;
+    const checked = !DEFAULT_HIDDEN.has(c.key);
+    const lab = document.createElement('label');
+    lab.innerHTML = `<input type="checkbox" id="${id}" ${checked?'checked':''}> ${c.label}`;
+    wrapper.appendChild(lab);
+    lab.querySelector('input').addEventListener('change', applyColumnVisibility);
+  }
+  applyColumnVisibility();
+}
+
+function applyColumnVisibility(){
+  const checks = Array.from(document.querySelectorAll('#col-toggles input[type="checkbox"]'));
+  const visible = new Set(checks.filter(c=>c.checked).map(c=>c.id.replace('col_','')));
+  const controllable = new Set(Array.from(checks).map(c=>c.id.replace('col_','')));
+  document.querySelectorAll('#tbl th').forEach(th=>{
+    const key = th.dataset.key;
+    if(!key) return;
+    th.classList.toggle('hidden', !visible.has(key));
+  });
+  document.querySelectorAll('#tbl tbody tr').forEach(tr=>{
+    Array.from(tr.children).forEach(td=>{
+      const m = td.className.match(/col-([A-Za-z0-9_.-]+)/);
+      if(!m) return;
+      const key = m[1];
+      if(!controllable.has(key)) return;
+      td.classList.toggle('hidden', !visible.has(key));
+    });
+  });
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  setupSort();
+  setupColumnToggles();
+  document.querySelector('#search').addEventListener('input', render);
+  // Fill summary
+  if(SUMMARY){
+    const el = document.querySelector('#summary');
+    const ram = SUMMARY.machine.ram_bytes;
+    const ramStr = ram? (ram/1073741824).toFixed(1)+' GB' : '-';
+    el.innerHTML = `<div class="small"><strong>Machine:</strong> CPU: ${SUMMARY.machine.cpu || '-'} · GPU: ${SUMMARY.machine.gpu || '-'} · RAM: ${ramStr}<br><strong>Models:</strong> ${SUMMARY.models} · <strong>Total gen time:</strong> ${(SUMMARY.total_generation_time_seconds||0).toFixed(2)} s · <strong>Avg gen time:</strong> ${SUMMARY.avg_generation_time_seconds?SUMMARY.avg_generation_time_seconds.toFixed(2):'-'} s</div>`;
+  }
+  render();
+  drawCharts();
+});
+
+function drawCharts(){
+  try{ drawScatterTPSvsGPU(); }catch(e){ console.warn('scatter failed', e); }
+  try{ drawBarsTimes(); }catch(e){ console.warn('bars failed', e); }
+}
+
+function drawScatterTPSvsGPU(){
+  const canvas = document.getElementById('chart_tps_gpu');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const data = DATA.filter(d=> num(d.tokens_per_second)!=null && num(d.gpu_w_avg)!=null);
+  const pad = 40; const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if(data.length===0){ ctx.fillText('No data for TPS vs GPU (avg W)', 10, 20); return; }
+  const xs = data.map(d=>num(d.gpu_w_avg));
+  const ys = data.map(d=>num(d.tokens_per_second));
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = 0, yMax = Math.max(...ys)*1.1;
+  const xScale = v => pad + (W-2*pad) * ((v - xMin) / (xMax - xMin || 1));
+  const yScale = v => H - pad - (H-2*pad) * ((v - yMin) / (yMax - yMin || 1));
+  // axes
+  ctx.strokeStyle = '#ccc';
+  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '12px system-ui';
+  ctx.fillText('GPU avg W', W/2 - 30, H - 10);
+  ctx.save(); ctx.translate(12, H/2); ctx.rotate(-Math.PI/2); ctx.fillText('Tokens/sec', 0, 0); ctx.restore();
+  // points
+  for(const d of data){
+    const x = xScale(num(d.gpu_w_avg));
+    const y = yScale(num(d.tokens_per_second));
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+  }
+  // labels (truncated)
+  ctx.fillStyle = '#555';
+  for(const d of data){
+    const x = xScale(num(d.gpu_w_avg));
+    const y = yScale(num(d.tokens_per_second));
+    const label = String(d.model).slice(0, 18);
+    ctx.fillText(label, x+6, y-6);
+  }
+}
+
+function drawBarsTimes(){
+  const canvas = document.getElementById('chart_times');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const data = DATA.filter(d=> num(d.generation_time_seconds)!=null).slice().sort((a,b)=>num(b.generation_time_seconds)-num(a.generation_time_seconds)).slice(0,20);
+  const pad = 60; const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  if(data.length===0){ ctx.fillText('No generation time data', 10, 20); return; }
+  const xs = data.map(d=>num(d.generation_time_seconds));
+  const xMax = Math.max(...xs) * 1.1; const xMin = 0;
+  const barH = (H-2*pad) / data.length;
+  const xScale = v => pad + (W-2*pad) * ((v - xMin) / (xMax - xMin || 1));
+  // axes
+  ctx.strokeStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '12px system-ui'; ctx.fillText('Generation time (s)', W/2 - 50, H - 10);
+  // bars
+  data.forEach((d,i)=>{
+    const y = pad + i*barH + 2;
+    const w = xScale(num(d.generation_time_seconds)) - pad;
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(pad, y, w, barH-4);
+    ctx.fillStyle = '#111';
+    const label = `${String(d.model).slice(0,18)}  ${num(d.generation_time_seconds).toFixed(1)}s`;
+    ctx.fillText(label, pad+4, y + barH/2 + 4);
+  });
+}
+
+  </script>
 </body>
 </html>

@@ -4,3 +4,4 @@ __pycache__/
 root/**/*.log
 root/**/*.json
 root/**/*.txt
+.env

@@ -1,0 +1,300 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Kanban Board</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* Custom scrollbar for columns */
+        .column-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+        .column-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        /* Dragging styles */
+        .card.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+        .drop-zone-active {
+            background-color: rgba(59, 130, 246, 0.1);
+            outline: 2px dashed #3b82f6;
+        }
+        /* Smooth transitions */
+        .card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-900">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-800">Project Board</h1>
+        </div>
+        <div class="text-sm text-slate-500 font-medium bg-slate-100 px-3 py-1 rounded-full">
+            Auto-saving to LocalStorage
+        </div>
+    </header>
+
+    <!-- Kanban Container -->
+    <main class="p-8 overflow-x-auto">
+        <div id="board" class="flex gap-6 min-h-[calc(100vh-180px)] items-start">
+            <!-- Columns will be injected here by JS -->
+        </div>
+    </main>
+
+    <!-- Custom Modal for Delete Confirmation -->
+    <div id="deleteModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full mx-4">
+            <h3 class="text-lg font-bold mb-2">Delete Card?</h3>
+            <p class="text-slate-600 mb-6">This action cannot be undone. Are you sure you want to remove this task?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancel</button>
+                <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * CONFIGURATION & STATE
+         */
+        const STORAGE_KEY = 'vibrant_kanban_state_v1';
+        const COLUMNS = [
+            { id: 'backlog', title: 'Backlog', color: 'bg-slate-200' },
+            { id: 'in-progress', title: 'In Progress', color: 'bg-blue-500' },
+            { id: 'review', title: 'Review', color: 'bg-amber-500' },
+            { id: 'done', title: 'Done', color: 'bg-emerald-500' }
+        ];
+
+        let state = {
+            cards: []
+        };
+
+        let cardToDelete = null;
+
+        /**
+         * INITIALIZATION
+         */
+        function init() {
+            const savedState = localStorage.getItem(STORAGE_KEY);
+            if (savedState) {
+                state = JSON.parse(savedState);
+            } else {
+                // Dummy Data
+                state.cards = [
+                    { id: 'c1', column: 'backlog', content: 'Research Tailwind animations' },
+                    { id: 'c2', column: 'in-progress', content: 'Build Kanban core logic' },
+                    { id: 'c3', column: 'review', content: 'Refactor storage service' },
+                    { id: 'c4', column: 'done', content: 'Setup project repository' }
+                ];
+                saveState();
+            }
+            renderBoard();
+        }
+
+        /**
+         * CORE LOGIC
+         */
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function addCard(columnId) {
+            const newCard = {
+                id: 'card-' + Date.now(),
+                column: columnId,
+                content: 'New Task'
+            };
+            state.cards.push(newCard);
+            saveState();
+            renderBoard();
+            
+            // Focus the newly created card for editing
+            const el = document.querySelector(`[data-id="${newCard.id}"] .card-content`);
+            if (el) {
+                el.focus();
+                // Move cursor to end
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(el);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        function updateCardContent(id, content) {
+            const card = state.cards.find(c => c.id === id);
+            if (card) {
+                card.content = content;
+                saveState();
+            }
+        }
+
+        function moveCard(cardId, targetColumnId) {
+            const card = state.cards.find(c => c.id === cardId);
+            if (card && card.column !== targetColumnId) {
+                card.column = targetColumnId;
+                
+                // Trigger Confetti if moved to Done
+                if (targetColumnId === 'done') {
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { y: 0.6 },
+                        colors: ['#10b981', '#3b82f6', '#f59e0b']
+                    });
+                }
+                
+                saveState();
+                renderBoard();
+            }
+        }
+
+        function openDeleteModal(id) {
+            cardToDelete = id;
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeDeleteModal() {
+            cardToDelete = null;
+            const modal = document.getElementById('deleteModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.getElementById('confirmDeleteBtn').onclick = () => {
+            if (cardToDelete) {
+                state.cards = state.cards.filter(c => c.id !== cardToDelete);
+                saveState();
+                renderBoard();
+                closeDeleteModal();
+            }
+        };
+
+        /**
+         * RENDERING
+         */
+        function renderBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            COLUMNS.forEach(col => {
+                const colCards = state.cards.filter(c => c.column === col.id);
+                
+                const colHtml = `
+                    <div class="flex-shrink-0 w-80 flex flex-col max-h-full">
+                        <div class="flex items-center justify-between mb-4 px-1">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full ${col.color}"></span>
+                                <h2 class="font-bold text-slate-700 uppercase text-sm tracking-wider">${col.title}</h2>
+                                <span class="ml-2 bg-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded-full font-bold">${colCards.length}</span>
+                            </div>
+                            <button onclick="addCard('${col.id}')" class="p-1 hover:bg-slate-200 rounded-md transition-colors text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div 
+                            class="column-scroll flex-1 overflow-y-auto min-h-[150px] rounded-xl transition-colors duration-200 p-2"
+                            ondragover="handleDragOver(event)"
+                            onpadding="handleDragLeave(event)"
+                            ondrop="handleDrop(event, '${col.id}')"
+                            data-column-id="${col.id}"
+                        >
+                            ${colCards.map(card => `
+                                <div 
+                                    class="card bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-3 cursor-grab active:cursor-grabbing group relative"
+                                    draggable="true"
+                                    ondragstart="handleDragStart(event, '${card.id}')"
+                                    data-id="${card.id}"
+                                >
+                                    <div 
+                                        class="card-content text-slate-700 outline-none focus:ring-2 focus:ring-blue-400 rounded p-1"
+                                        contenteditable="true"
+                                        onblur="updateCardContent('${card.id}', this.innerText)"
+                                        onkeydown="handleCardKeydown(event)"
+                                    >${card.content}</div>
+                                    
+                                    <button 
+                                        onclick="openDeleteModal('${card.id}')"
+                                        class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                board.innerHTML += colHtml;
+            });
+        }
+
+        /**
+         * DRAG AND DROP HANDLERS
+         */
+        function handleDragStart(e, id) {
+            e.dataTransfer.setData('text/plain', id);
+            e.target.classList.add('dragging');
+            // Allow drop effect
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drop-zone-active');
+        }
+
+        function handleDragLeave(e) {
+            // Only remove if we're actually leaving the column container
+            if (!e.currentTarget.contains(e.relatedTarget)) {
+                e.currentTarget.classList.remove('drop-zone-active');
+            }
+        }
+
+        function handleDrop(e, columnId) {
+            e.preventDefault();
+            const cardId = e.dataTransfer.getData('text/plain');
+            
+            // Remove visual cues
+            document.querySelectorAll('.drop-zone-active').forEach(el => el.classList.remove('drop-zone-active'));
+            document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+            
+            moveCard(cardId, columnId);
+        }
+
+        /**
+         * UI HELPERS
+         */
+        function handleCardKeydown(e) {
+            // Prevent new lines on Enter, just blur to save
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.target.blur();
+            }
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>

@@ -1,0 +1,527 @@
+Here is the complete, single-file HTML solution. It includes the Tailwind CSS CDN, custom CSS for animations, and vanilla JavaScript to handle the state, drag-and-drop logic, localStorage persistence, and the confetti effect.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Kanban Board</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Confetti Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        /* Custom Styles & Transitions */
+        
+        /* Smooth transition for card movement */
+        .kanban-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        }
+
+        /* Visual feedback when dragging */
+        .kanban-card.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+            cursor: grabbing;
+        }
+
+        /* Visual feedback for the drop zone (column) */
+        .column-container.drag-over {
+            background-color: rgba(59, 130, 246, 0.1); /* Light blue tint */
+            border-color: #3b82f6;
+            border-style: dashed;
+        }
+
+        /* Hide scrollbar for cleaner look but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        /* Modal Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-animate {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+
+        /* Editable Content Outline */
+        [contenteditable]:focus {
+            outline: 2px solid #3b82f6;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 4px;
+            padding: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 p-4 shadow-lg z-10">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                🚀 FlowBoard
+            </h1>
+            <button onclick="resetBoard()" class="text-xs text-gray-400 hover:text-white underline">
+                Reset Data
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Board Area -->
+    <main class="flex-grow overflow-x-auto overflow-y-hidden p-6">
+        <div class="flex h-full gap-6 min-w-max" id="board-container">
+            <!-- Columns will be injected here by JS -->
+        </div>
+    </main>
+
+    <!-- Modal (Used for Add/Edit/Delete Confirmation) -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-96 border border-gray-700 modal-animate">
+            <h2 id="modal-title" class="text-xl font-bold mb-4 text-white">Edit Card</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Title</label>
+                    <input type="text" id="modal-input-title" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-blue-500 focus:outline-none transition-colors" placeholder="Task title">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Description</label>
+                    <textarea id="modal-input-desc" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-blue-500 focus:outline-none transition-colors h-24" placeholder="Details..."></textarea>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-white transition-colors">Cancel</button>
+                <button id="modal-action-btn" class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 border border-gray-600 text-white px-4 py-2 rounded shadow-lg transform translate-y-20 transition-transform duration-300 opacity-0">
+        Notification
+    </div>
+
+    <script>
+        /**
+         * APPLICATION STATE & CONFIGURATION
+         */
+        const STORAGE_KEY = 'kanban_board_v1'; // Custom namespace for localStorage
+        const COLUMNS = ['Backlog', 'In Progress', 'Review', 'Done'];
+        
+        // Initial Dummy Data
+        const DUMMY_DATA = [
+            { id: 'c1', column: 'Backlog', title: 'Research Competitors', desc: 'Analyze top 3 market leaders.' },
+            { id: 'c2', column: 'In Progress', title: 'Design System', desc: 'Define colors, fonts, and components.' },
+            { id: 'c3', column: 'Review', title: 'API Integration', desc: 'Connect frontend to the backend endpoints.' },
+        ];
+
+        // State holder
+        let state = [];
+
+        /**
+         * INITIALIZATION
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderBoard();
+            setupModalListeners();
+        });
+
+        /**
+         * STATE MANAGEMENT
+         */
+        function loadState() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                state = JSON.parse(stored);
+            } else {
+                state = [...DUMMY_DATA]; // Initialize with dummy data if empty
+                saveState();
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function resetBoard() {
+            if(confirm("Are you sure you want to reset the board to default dummy data?")) {
+                localStorage.removeItem(STORAGE_KEY);
+                loadState(); // Reloads dummy data
+                renderBoard();
+                showToast("Board reset successfully");
+            }
+        }
+
+        /**
+         * RENDERING LOGIC
+         */
+        function renderBoard() {
+            const container = document.getElementById('board-container');
+            container.innerHTML = '';
+
+            COLUMNS.forEach(colName => {
+                // Create Column Wrapper
+                const colWrapper = document.createElement('div');
+                colWrapper.className = 'flex flex-col w-80 flex-shrink-0 bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden max-h-full';
+                
+                // Header
+                const header = document.createElement('div');
+                header.className = 'p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center';
+                header.innerHTML = `
+                    <h3 class="font-bold text-gray-200 tracking-wide">${colName}</h3>
+                    <span class="bg-gray-700 text-xs px-2 py-1 rounded-full text-gray-300 count-badge" data-col="${colName}">0</span>
+                `;
+                
+                // Add Button (Small icon)
+                const addBtn = document.createElement('button');
+                addBtn.className = 'text-gray-400 hover:text-blue-400 transition-colors';
+                addBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>';
+                addBtn.onclick = () => openAddModal(colName);
+                header.appendChild(addBtn);
+
+                // Drop Zone (Card Container)
+                const dropZone = document.createElement('div');
+                dropZone.className = 'flex-1 overflow-y-auto p-3 space-y-3 no-scrollbar column-container min-h-[100px]';
+                dropZone.dataset.column = colName;
+                
+                // Drag Events for Drop Zone
+                dropZone.addEventListener('dragover', handleDragOver);
+                dropZone.addEventListener('dragleave', handleDragLeave);
+                dropZone.addEventListener('drop', handleDrop);
+
+                // Filter and Render Cards
+                const colCards = state.filter(c => c.column === colName);
+                
+                // Update Badge Count
+                header.querySelector('.count-badge').textContent = colCards.length;
+
+                colCards.forEach(card => {
+                    const cardEl = createCardElement(card);
+                    dropZone.appendChild(cardEl);
+                });
+
+                // Assemble Column
+                colWrapper.appendChild(header);
+                colWrapper.appendChild(dropZone);
+                container.appendChild(colWrapper);
+            });
+        }
+
+        function createCardElement(card) {
+            const el = document.createElement('div');
+            el.className = 'kanban-card bg-gray-700 p-3 rounded-lg shadow-sm cursor-grab hover:bg-gray-600 border-l-4 border-transparent hover:border-blue-400 group relative';
+            el.draggable = true;
+            el.dataset.id = card.id;
+
+            // Drag Events for Card
+            el.addEventListener('dragstart', handleDragStart);
+            el.addEventListener('dragend', handleDragEnd);
+
+            // Content (Editable)
+            // We wrap title and desc in spans to make them contenteditable
+            el.innerHTML = `
+                <div class="flex justify-between items-start mb-1">
+                    <span class="font-semibold text-gray-100 w-full outline-none border-b border-transparent focus:border-blue-500 pb-1 mb-1" contenteditable="true" data-field="title">${card.title}</span>
+                    <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        <button class="delete-btn text-red-400 hover:text-red-300 p-1" title="Delete">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-400 outline-none focus:text-white focus:bg-gray-800 rounded p-1" contenteditable="true" data-field="desc">${card.desc || 'No description'}</div>
+            `;
+
+            // Setup Edit Listeners (In-place editing)
+            const titleSpan = el.querySelector('[data-field="title"]');
+            const descSpan = el.querySelector('[data-field="desc"]');
+
+            // Helper to save on blur (when focus lost) or Enter key
+            const saveEdit = (field, element) => {
+                const newVal = element.innerText.trim();
+                // Update State
+                const cardIndex = state.findIndex(c => c.id === card.id);
+                if (cardIndex > -1 && state[cardIndex][field] !== newVal) {
+                    state[cardIndex][field] = newVal;
+                    saveState();
+                    showToast("Saved changes");
+                }
+                // If title is empty, revert or handle (simple revert here)
+                if (field === 'title' && newVal === '') {
+                    element.innerText = state[cardIndex][field];
+                }
+            };
+
+            [titleSpan, descSpan].forEach(el => {
+                el.addEventListener('blur', (e) => saveEdit(e.target.dataset.field, e.target));
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        e.target.blur();
+                    }
+                });
+            });
+
+            // Delete Listener
+            el.querySelector('.delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent drag start
+                deleteCard(card.id);
+            });
+
+            return el;
+        }
+
+        /**
+         * DRAG AND DROP LOGIC
+         */
+        let draggedCardId = null;
+        let originalColumn = null;
+
+        function handleDragStart(e) {
+            draggedCardId = this.dataset.id;
+            const cardData = state.find(c => c.id === draggedCardId);
+            originalColumn = cardData.column;
+            
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', draggedCardId); // Required for Firefox
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            // Remove drag-over style from all columns
+            document.querySelectorAll('.column-container').forEach(col => col.classList.remove('drag-over'));
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            
+            const targetColumn = this.dataset.column;
+            
+            if (!draggedCardId || !targetColumn) return;
+
+            // Update State
+            const cardIndex = state.findIndex(c => c.id === draggedCardId);
+            if (cardIndex > -1) {
+                const card = state[cardIndex];
+                
+                // Only update if changed
+                if (card.column !== targetColumn) {
+                    card.column = targetColumn;
+                    saveState();
+                    renderBoard(); // Re-render to sort visually
+
+                    // Check for "Done" trigger
+                    if (targetColumn === 'Done') {
+                        triggerConfetti();
+                    }
+                }
+            }
+            
+            draggedCardId = null;
+            originalColumn = null;
+        }
+
+        /**
+         * MODAL & ACTIONS LOGIC
+         */
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTitle = document.getElementById('modal-title');
+        const inputTitle = document.getElementById('modal-input-title');
+        const inputDesc = document.getElementById('modal-input-desc');
+        const actionBtn = document.getElementById('modal-action-btn');
+        const cancelBtn = document.getElementById('modal-cancel-btn');
+
+        let currentModalMode = null; // 'add' or null
+        let currentAddColumn = null;
+
+        function setupModalListeners() {
+            cancelBtn.addEventListener('click', closeModal);
+            
+            // Close on click outside
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) closeModal();
+            });
+
+            // Action Handler
+            actionBtn.addEventListener('click', () => {
+                const title = inputTitle.value.trim();
+                const desc = inputDesc.value.trim();
+
+                if (!title) {
+                    inputTitle.classList.add('border-red-500');
+                    return;
+                }
+
+                if (currentModalMode === 'add') {
+                    addCard(currentAddColumn, title, desc);
+                }
+                
+                closeModal();
+            });
+        }
+
+        function openAddModal(column) {
+            currentModalMode = 'add';
+            currentAddColumn = column;
+            modalTitle.innerText = `Add Card to ${column}`;
+            inputTitle.value = '';
+            inputDesc.value = '';
+            inputTitle.classList.remove('border-red-500');
+            actionBtn.innerText = 'Add Card';
+            actionBtn.className = 'px-4 py-2 rounded bg-green-600 hover:bg-green-500 text-white font-bold transition-colors';
+            
+            modalOverlay.classList.remove('hidden');
+            modalOverlay.classList.add('flex');
+            setTimeout(() => inputTitle.focus(), 50);
+        }
+
+        function closeModal() {
+            modalOverlay.classList.add('hidden');
+            modalOverlay.classList.remove('flex');
+            currentModalMode = null;
+            currentAddColumn = null;
+        }
+
+        function addCard(column, title, desc) {
+            const newCard = {
+                id: 'c' + Date.now(),
+                column: column,
+                title: title,
+                desc: desc
+            };
+            state.push(newCard);
+            saveState();
+            renderBoard();
+            showToast("Card added");
+        }
+
+        function deleteCard(id) {
+            // We use a custom confirm prompt inside the modal or simple browser confirm
+            // Requirement says "don't use window.alert or window.prompt", but standard confirm is usually allowed for destructive actions unless strictly forbidden.
+            // However, to be safe and follow the "no alert/prompt" strictly, let's use a simple boolean check or a dedicated UI. 
+            // Given the constraint "don't use window.alert or window.prompt to add/edit/delete cards", we will use the browser's `confirm` which is technically distinct from `alert` and `prompt`, 
+            // but to be truly modern, let's just delete with a toast "Undo" (complex) or just ask for confirmation via a simple JS boolean. 
+            // Wait, the prompt requirement is strict. I will use a simple `confirm` as it's the standard vanilla way, but I'll add a "Undo" toast if I were building a pro app. 
+            // For now, strict adherence: I will use a simple confirmation logic. 
+            // Actually, let's use the modal to confirm deletion to be 100% UI consistent and avoid window.prompt.
+            
+            // Let's repurpose the modal for deletion confirmation
+            modalTitle.innerText = "Confirm Deletion";
+            inputTitle.parentElement.style.display = 'none'; // Hide inputs
+            inputDesc.parentElement.style.display = 'none';
+            
+            const msg = document.createElement('div');
+            msg.className = "text-center text-gray-300 mb-4";
+            msg.innerText = "Are you sure you want to delete this card?";
+            modalTitle.insertAdjacentElement('afterend', msg);
+            
+            actionBtn.innerText = "Delete";
+            actionBtn.className = "px-4 py-2 rounded bg-red-600 hover:bg-red-500 text-white font-bold transition-colors";
+            
+            // Remove previous listeners to avoid duplicates or conflicts
+            const newActionBtn = actionBtn.cloneNode(true);
+            actionBtn.parentNode.replaceChild(newActionBtn, actionBtn);
+            
+            newActionBtn.addEventListener('click', () => {
+                state = state.filter(c => c.id !== id);
+                saveState();
+                renderBoard();
+                showToast("Card deleted");
+                // Restore Modal UI
+                cleanupDeleteModal(msg);
+                closeModal();
+            });
+
+            // Restore inputs on cancel
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            newCancelBtn.addEventListener('click', () => {
+                cleanupDeleteModal(msg);
+                closeModal();
+            });
+
+            modalOverlay.classList.remove('hidden');
+            modalOverlay.classList.add('flex');
+        }
+
+        function cleanupDeleteModal(msgElement) {
+            if(msgElement) msgElement.remove();
+            inputTitle.parentElement.style.display = 'block';
+            inputDesc.parentElement.style.display = 'block';
+            
+            // Restore buttons to original state (Add mode defaults, though it will be reset on next open)
+            // Just resetting text and color for safety
+            const currentAction = document.getElementById('modal-action-btn');
+            currentAction.innerText = "Save"; 
+            currentAction.className = "px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold transition-colors";
+        }
+
+        /**
+         * VISUAL EFFECTS
+         */
+        function triggerConfetti() {
+            // Using canvas-confetti library
+            const duration = 2000;
+            const end = Date.now() + duration;
+
+            (function frame() {
+                // fire particles from left
+                confetti({
+                    particleCount: 3,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#10B981', '#3B82F6', '#F59E0B'] // Tailwind colors
+                });
+                // fire particles from right
+                confetti({
+                    particleCount: 3,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#10B981', '#3B82F6', '#F59E0B']
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+            
+            showToast("🎉 Task Completed!");
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>
+```

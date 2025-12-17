@@ -1,0 +1,293 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vanilla JS Kanban Board</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Confetti library (lightweight, no framework) -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    /* Smooth drag visuals */
+    .dragging {
+      opacity: 0.5;
+      transform: rotate(2deg);
+    }
+
+    /* Subtle hover animation */
+    .card {
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+
+    /* Editable focus */
+    .card[contenteditable="true"]:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgb(99 102 241);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-purple-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="p-6 text-center">
+    <h1 class="text-3xl font-bold text-indigo-700">✨ Vanilla JS Kanban Board</h1>
+    <p class="text-gray-600 mt-2">Drag, edit, and persist your tasks</p>
+  </header>
+
+  <!-- Board -->
+  <main class="px-4 pb-10">
+    <div id="board" class="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
+      <!-- Columns will be rendered here -->
+    </div>
+  </main>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="confirmModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-80 shadow-xl">
+      <h2 class="text-lg font-semibold mb-4">Delete card?</h2>
+      <p class="text-sm text-gray-600 mb-6">This action cannot be undone.</p>
+      <div class="flex justify-end gap-3">
+        <button id="cancelDelete" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
+          Cancel
+        </button>
+        <button id="confirmDelete" class="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600">
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /************************************************************
+     * CONSTANTS & STATE
+     ************************************************************/
+    const STORAGE_KEY = "vanilla_kanban_board_v1"; // our own namespace
+
+    const COLUMNS = [
+      { id: "backlog", title: "Backlog", color: "bg-slate-100" },
+      { id: "inprogress", title: "In Progress", color: "bg-blue-100" },
+      { id: "review", title: "Review", color: "bg-amber-100" },
+      { id: "done", title: "Done", color: "bg-emerald-100" },
+    ];
+
+    // In-memory board state
+    let boardState = {};
+
+    // Temporary reference for delete confirmation
+    let cardPendingDelete = null;
+
+    /************************************************************
+     * INITIALIZATION
+     ************************************************************/
+    init();
+
+    function init() {
+      loadState();
+      renderBoard();
+      setupModal();
+    }
+
+    /************************************************************
+     * STATE MANAGEMENT
+     ************************************************************/
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+
+      if (saved) {
+        boardState = JSON.parse(saved);
+      } else {
+        // Create dummy cards if no data exists
+        boardState = {
+          backlog: [
+            { id: crypto.randomUUID(), text: "Brainstorm app ideas 💡" },
+            { id: crypto.randomUUID(), text: "Write project requirements" },
+          ],
+          inprogress: [
+            { id: crypto.randomUUID(), text: "Build Kanban UI" },
+          ],
+          review: [
+            { id: crypto.randomUUID(), text: "Code review & polish ✨" },
+          ],
+          done: [
+            { id: crypto.randomUUID(), text: "Set up localStorage persistence ✅" },
+          ],
+        };
+        saveState();
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(boardState));
+    }
+
+    /************************************************************
+     * RENDERING
+     ************************************************************/
+    function renderBoard() {
+      const board = document.getElementById("board");
+      board.innerHTML = "";
+
+      COLUMNS.forEach(column => {
+        const colEl = document.createElement("div");
+        colEl.className = `rounded-xl p-3 flex flex-col ${column.color}`;
+        colEl.dataset.column = column.id;
+
+        // Column header
+        colEl.innerHTML = `
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold text-gray-700">${column.title}</h2>
+            <button class="add-card text-sm text-indigo-600 hover:underline">+ Add</button>
+          </div>
+          <div class="flex-1 space-y-3" data-dropzone></div>
+        `;
+
+        // Render cards
+        const dropzone = colEl.querySelector("[data-dropzone]");
+        (boardState[column.id] || []).forEach(card => {
+          dropzone.appendChild(createCardElement(card, column.id));
+        });
+
+        // Add card handler
+        colEl.querySelector(".add-card").addEventListener("click", () => {
+          addCard(column.id);
+        });
+
+        // Drag over handler
+        dropzone.addEventListener("dragover", e => {
+          e.preventDefault();
+        });
+
+        // Drop handler
+        dropzone.addEventListener("drop", e => {
+          const cardId = e.dataTransfer.getData("text/plain");
+          moveCard(cardId, column.id);
+        });
+
+        board.appendChild(colEl);
+      });
+    }
+
+    function createCardElement(card, columnId) {
+      const el = document.createElement("div");
+      el.className = "card bg-white rounded-lg p-3 cursor-grab relative";
+      el.draggable = true;
+      el.dataset.cardId = card.id;
+
+      // Editable content
+      const content = document.createElement("div");
+      content.textContent = card.text;
+      content.contentEditable = true;
+      content.className = "text-sm text-gray-800";
+
+      // Save edits on blur
+      content.addEventListener("blur", () => {
+        card.text = content.textContent.trim() || "Untitled card";
+        saveState();
+      });
+
+      // Delete button
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "✕";
+      delBtn.className = "absolute top-1 right-2 text-gray-400 hover:text-red-500";
+      delBtn.addEventListener("click", () => openDeleteModal(card.id));
+
+      // Drag events
+      el.addEventListener("dragstart", e => {
+        el.classList.add("dragging");
+        e.dataTransfer.setData("text/plain", card.id);
+      });
+      el.addEventListener("dragend", () => {
+        el.classList.remove("dragging");
+      });
+
+      el.appendChild(delBtn);
+      el.appendChild(content);
+
+      return el;
+    }
+
+    /************************************************************
+     * ACTIONS
+     ************************************************************/
+    function addCard(columnId) {
+      const newCard = {
+        id: crypto.randomUUID(),
+        text: "New card ✏️",
+      };
+      boardState[columnId].push(newCard);
+      saveState();
+      renderBoard();
+    }
+
+    function moveCard(cardId, targetColumn) {
+      let movedCard = null;
+      let fromColumn = null;
+
+      // Remove card from its current column
+      for (const col in boardState) {
+        const index = boardState[col].findIndex(c => c.id === cardId);
+        if (index !== -1) {
+          movedCard = boardState[col].splice(index, 1)[0];
+          fromColumn = col;
+          break;
+        }
+      }
+
+      if (!movedCard) return;
+
+      boardState[targetColumn].push(movedCard);
+      saveState();
+      renderBoard();
+
+      // Trigger confetti when moving to Done
+      if (targetColumn === "done" && fromColumn !== "done") {
+        confetti({
+          particleCount: 120,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+      }
+    }
+
+    /************************************************************
+     * DELETE MODAL (NO alert/prompt USED)
+     ************************************************************/
+    function setupModal() {
+      const modal = document.getElementById("confirmModal");
+      const cancelBtn = document.getElementById("cancelDelete");
+      const confirmBtn = document.getElementById("confirmDelete");
+
+      cancelBtn.addEventListener("click", () => {
+        cardPendingDelete = null;
+        modal.classList.add("hidden");
+      });
+
+      confirmBtn.addEventListener("click", () => {
+        if (!cardPendingDelete) return;
+
+        for (const col in boardState) {
+          boardState[col] = boardState[col].filter(c => c.id !== cardPendingDelete);
+        }
+        saveState();
+        renderBoard();
+
+        cardPendingDelete = null;
+        modal.classList.add("hidden");
+      });
+    }
+
+    function openDeleteModal(cardId) {
+      cardPendingDelete = cardId;
+      document.getElementById("confirmModal").classList.remove("hidden");
+      document.getElementById("confirmModal").classList.add("flex");
+    }
+  </script>
+</body>
+</html>
