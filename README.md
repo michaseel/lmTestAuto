@@ -87,4 +87,4 @@ After a run finishes, a consolidated report is also saved automatically to `<run
 
 
 
-update docs report: python3 build_bench_report.py docs/openrouter-bench-3df72d1ae3 --out docs/openrouter-bench-3df72d1ae3/index.html
+update openrouter docs report: python ./openrouter_report.py docs/openrouter-bench-3df72d1ae3 
