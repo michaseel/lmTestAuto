@@ -84,3 +84,7 @@ After a run finishes, a consolidated report is also saved automatically to `<run
 - The script first tries the LM Studio REST API (`/api/v0/chat/completions`) to capture richer stats. If unavailable, it falls back to the OpenAI‑compatible API (`/v1/chat/completions`).
 - Power sampling interval defaults to 1s; adjust `POWERMETRICS_INTERVAL_MS` in the script as needed.
 - RAM tracking aggregates all processes whose `name`/`cmdline` suggests LM Studio or `lms`.
+
+
+
+update docs report: python3 build_bench_report.py docs/openrouter-bench-3df72d1ae3 --out docs/openrouter-bench-3df72d1ae3/index.html
