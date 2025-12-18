@@ -12,6 +12,27 @@ except Exception:
     psutil = None
 
 
+def create_screenshot(html_path: Path, screenshot_path: Path) -> bool:
+    """Create a screenshot of an HTML file using playwright."""
+    try:
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page(viewport={"width": 1200, "height": 800})
+            page.goto(f"file://{html_path.absolute()}")
+            page.wait_for_load_state("networkidle")
+            page.screenshot(path=screenshot_path)
+            browser.close()
+        return True
+    except ImportError:
+        print("Warning: playwright not installed. Run: pip install playwright && playwright install chromium")
+        return False
+    except Exception as e:
+        print(f"Error creating screenshot for {html_path}: {e}")
+        return False
+
+
 def load_results(folder: Path):
     rows = []
     for p in sorted(folder.glob("*.json")):
@@ -120,7 +141,7 @@ def _machine_info():
     return info
 
 
-def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path: Path = None):
+def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path: Path = None, create_screenshots: bool = True):
     # Prepare normalized rows for the table
     base_dir = (out_path.parent if out_path else Path.cwd()).resolve()
     records = []
@@ -157,6 +178,22 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
         log_path = _relative_path(files.get("powermetrics_log"), base_dir)
         text_path = _relative_path(files.get("raw_text"), base_dir)
         json_path = _relative_path(p, base_dir)
+
+        # Create screenshot if HTML exists
+        screenshot_path = None
+        if html_path and create_screenshots:
+            html_full_path = base_dir / html_path
+            screenshot_name = html_path.replace(".html", "_screenshot.png")
+            screenshot_full_path = base_dir / screenshot_name
+
+            # Create screenshot if it doesn't exist
+            if html_full_path.exists() and not screenshot_full_path.exists():
+                print(f"Creating screenshot for {html_path}...")
+                if create_screenshot(html_full_path, screenshot_full_path):
+                    screenshot_path = _relative_path(screenshot_full_path, base_dir)
+            elif screenshot_full_path.exists():
+                screenshot_path = _relative_path(screenshot_full_path, base_dir)
+
         rec = {
             "model": d.get("model"),
             "timestamp": d.get("timestamp"),
@@ -184,6 +221,7 @@ def build_html(rows, title="LM Studio Bench Report", prompt_text=None, out_path:
             "log_path": log_path,
             "raw_json_path": json_path,
             "raw_text_path": text_path,
+            "screenshot_path": screenshot_path,
             "model_size": model_size,
             "quantization": quant,
             "settings": {
@@ -222,6 +260,9 @@ code{background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:1px 4
 .cols{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
 .cols label{display:flex;align-items:center;gap:6px;border:1px solid #e2e8f0;padding:4px 8px;border-radius:8px;background:#f8fafc}
 .hidden{display:none}
+.preview-container{position:relative}
+.preview-img{display:none;position:fixed;z-index:1000;border:2px solid #333;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);max-width:600px;max-height:400px;pointer-events:none}
+tbody tr:hover .preview-img{display:block}
 """
 
     # JS sorting/filtering and rendering
@@ -259,11 +300,12 @@ function render(){
   for(const r of rows){
     if(q && !(String(r.model).toLowerCase().includes(q))) continue;
     const tr = document.createElement('tr');
+    tr.className = 'preview-container';
     const linkHtml = r.html_path ? `<a href=\"${r.html_url}\" target=\"_blank\">HTML</a>` : '<span class=\"muted\">n/a</span>';
     const linkText = r.raw_text_path ? `<a href=\"${r.text_url}\" target=\"_blank\">Text</a>` : '<span class=\"muted\">n/a</span>';
+    const screenshot_img = r.screenshot_url ? `<img src=\"${r.screenshot_url}\" class="preview-img" alt="Screenshot">` : '';
     tr.innerHTML = `
       <td class="col-model nowrap">${r.model || '-'}</td>
-      <td class="col-timestamp">${r.timestamp ? new Date(r.timestamp).toLocaleString() : '-'}</td>
       <td class="col-settings nowrap">${r.settings.gpu_setting?`<span class=\"tag\">gpu:${r.settings.gpu_setting}</span>`:''} <span class="tag">T=${r.settings.temperature ?? '-'}</span> <span class="tag">p=${r.settings.top_p ?? '-'}</span></td>
       <td class="col-load_time_seconds">${r.load_time_seconds?.toFixed?.(2) ?? '-'}</td>
       <td class="col-generation_time_seconds">${r.generation_time_seconds?.toFixed?.(2) ?? '-'}</td>
@@ -280,8 +322,19 @@ function render(){
       <td class="col-ane_w_avg">${r.ane_w_avg?.toFixed?.(2) ?? '-'}</td>
       <td class="col-mem_after_load_lms">${formatBytes(r.mem_after_load_lms)}</td>
       <td class="col-mem_after_gen_lms">${formatBytes(r.mem_after_gen_lms)}</td>
+      <td class="col-timestamp">${r.timestamp ? new Date(r.timestamp).toLocaleString() : '-'}</td>
       <td class=\"col-artifacts\">${linkHtml} · ${linkText} · <a href=\"${r.json_url}\" target=\"_blank\">JSON</a></td>
+      ${screenshot_img}
     `;
+    if(r.screenshot_url){
+      const img = tr.querySelector('.preview-img');
+      tr.addEventListener('mousemove', (e)=>{
+        const x = e.clientX + 15;
+        const y = e.clientY + 15;
+        img.style.left = x + 'px';
+        img.style.top = y + 'px';
+      });
+    }
     tbody.appendChild(tr);
   }
   document.querySelector('#count').textContent = rows.length;
@@ -426,6 +479,7 @@ function drawBarsTimes(){
         r["log_url"] = _relative_href(r.get("log_path"))
         r["json_url"] = _relative_href(r.get("raw_json_path"))
         r["text_url"] = _relative_href(r.get("raw_text_path"))
+        r["screenshot_url"] = _relative_href(r.get("screenshot_path"))
 
     # Build HTML doc
     data_json = json.dumps(records)
@@ -457,7 +511,6 @@ function drawBarsTimes(){
     <thead>
       <tr>
         <th class="col-model" data-key="model">Model</th>
-        <th class="col-timestamp" data-key="timestamp">Timestamp</th>
         <th class="col-settings" data-key="settings">Settings</th>
         <th class="col-load_time_seconds" data-key="load_time_seconds">Load s</th>
         <th class="col-generation_time_seconds" data-key="generation_time_seconds">Gen s</th>
@@ -474,6 +527,7 @@ function drawBarsTimes(){
         <th class="col-ane_w_avg" data-key="ane_w_avg">ANE W(avg)</th>
         <th class="col-mem_after_load_lms" data-key="mem_after_load_lms">LM RSS Δ load</th>
         <th class="col-mem_after_gen_lms" data-key="mem_after_gen_lms">LM RSS Δ gen</th>
+        <th class="col-timestamp" data-key="timestamp">Timestamp</th>
         <th class="col-artifacts" data-key="artifacts">Artifacts</th>
       </tr>
     </thead>
@@ -505,6 +559,7 @@ def main():
     ap.add_argument("--out", default=None, help="Output HTML file (default: <folder>/index.html)")
     ap.add_argument("--title", default="LM Studio Bench Report", help="Title for the report")
     ap.add_argument("--prompt-file", default=None, help="Optional file containing the original prompt text to embed")
+    ap.add_argument("--no-screenshots", action="store_true", help="Skip screenshot generation")
     args = ap.parse_args()
 
     folder = Path(args.folder)
@@ -517,7 +572,7 @@ def main():
             pass
 
     rows = load_results(folder)
-    html = build_html(rows, title=args.title, prompt_text=prompt_text, out_path=out)
+    html = build_html(rows, title=args.title, prompt_text=prompt_text, out_path=out, create_screenshots=not args.no_screenshots)
     out.write_text(html)
     display_out = _relative_path(out, Path.cwd()) or out.as_posix()
     print(f"Wrote report: {display_out}")
