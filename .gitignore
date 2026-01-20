@@ -5,3 +5,4 @@ root/**/*.log
 root/**/*.json
 root/**/*.txt
 .env
+firebase-debug.log

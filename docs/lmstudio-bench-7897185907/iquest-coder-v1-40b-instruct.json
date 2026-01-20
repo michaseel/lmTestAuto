@@ -1,0 +1,83 @@
+{
+  "model": "iquest-coder-v1-40b-instruct",
+  "timestamp": "2026-01-20T11:33:40.930530",
+  "load_time_seconds": null,
+  "generation_time_seconds": null,
+  "rest_stats": {},
+  "usage": {},
+  "model_info": {},
+  "runtime": {},
+  "power": {
+    "cpu_watts": {
+      "avg": null,
+      "max": null,
+      "min": null,
+      "samples": 0
+    },
+    "gpu_watts": {
+      "avg": null,
+      "max": null,
+      "min": null,
+      "samples": 0
+    },
+    "ane_watts": {
+      "avg": null,
+      "max": null,
+      "min": null,
+      "samples": 0
+    },
+    "samplers": "cpu_power,gpu_power,ane_power"
+  },
+  "memory": {
+    "baseline": {
+      "system_used_bytes": 37206736896,
+      "lmstudio_rss_bytes": 2333949952
+    },
+    "after_load": {
+      "system_used_bytes": 36894883840,
+      "lmstudio_rss_bytes": 2334310400
+    },
+    "after_generation": {
+      "system_used_bytes": 36898652160,
+      "lmstudio_rss_bytes": 2333769728
+    },
+    "delta_since_baseline_after_load": {
+      "system_used_bytes": -311853056,
+      "lmstudio_rss_bytes": 360448
+    },
+    "delta_since_baseline_after_generation": {
+      "system_used_bytes": -308084736,
+      "lmstudio_rss_bytes": -180224
+    },
+    "delta_since_load_after_generation": {
+      "system_used_bytes": 3768320,
+      "lmstudio_rss_bytes": -540672
+    },
+    "hwm_during_generation": {
+      "system_used_hwm_bytes": 36891181056,
+      "lmstudio_rss_hwm_bytes": 2334343168
+    }
+  },
+  "derived": {
+    "tokens_per_second_fallback": null
+  },
+  "files": {
+    "html": null,
+    "raw_text": null,
+    "powermetrics_log": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/iquest-coder-v1-40b-instruct_powermetrics.log"
+  },
+  "prompt": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_tokens": -1,
+    "num_ctx": 16384,
+    "text": "Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).\n\nRequirements:\n- Columns: Backlog, In Progress, Review, Done.\n- Cards must be:\n  - draggable across columns,\n  - editable in place,\n  - persisted in localStorage (state survives reloads) - please use your own namespace,\n  - deletable with a confirmation prompt.\n- Each column provides an \u201cAdd card\u201d action.\n- Style with Tailwind via CDN.\n- Add subtle CSS transitions and trigger a confetti animation when a card moves to \u201cDone\u201d.\n- Thoroughly comment the code.\n- dont use window.alert or window.prompt to add/edit/delete cards\n- if there are no cards yet, create some dummy cards\n- modern and vibrant design\n\nAs answer return the plain HTML of the working application (script and styles included)\n",
+    "gpu_setting": "max",
+    "reasoning_effort": "medium"
+  },
+  "load_key_used": null,
+  "errors": {
+    "load": "load_failed: CalledProcessError: Command '['lms', 'load', 'lmstudio-community/IQUEST-CODER-V1-40B-INSTRUCT', '--gpu', 'max', '-y']' returned non-zero exit status 1.",
+    "generation": null
+  }
+}
