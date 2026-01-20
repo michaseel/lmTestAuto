@@ -1,0 +1,311 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.1.2/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* Custom confetti animation styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .card {
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: move;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-content {
+            font-size: 0.875rem;
+        }
+
+        #board {
+            display: flex;
+            flex-direction: column;
+            min-height: 50vh;
+        }
+
+        .column {
+            display: flex;
+            border: 1px solid #ccc;
+            margin-bottom: 1rem;
+        }
+
+        .column-header {
+            background-color: #eee;
+            padding: 0.5rem;
+            font-weight: bold;
+        }
+
+        #addCardBtn {
+            padding: 0.75rem 1.25rem;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        #addCardBtn:hover {
+            background-color: #388e3c;
+        }
+
+        #boardContainer {
+            display: flex;
+            width: 100%;
+        }
+
+        .card-drag {
+            position: relative;
+        }
+
+
+    </style>
+</head>
+
+<body>
+
+<div id="boardContainer">
+    <div id="board">
+        <div class="column column-header" data-column="backlog">Backlog</div>
+        <div class="column column-header" data-column="inProgress">In Progress</div>
+        <div class="column column-header" data-column="review">Review</div>
+        <div class="column column-header" data-column="done">Done</div>
+
+        <div id="cardList" class="flex flex-col">
+            <!-- Cards will be added here dynamically -->
+        </div>
+
+        <button id="addCardBtn" class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Add Card
+        </button>
+
+    </div>
+</div>
+
+
+<script>
+    const boardContainer = document.getElementById('boardContainer');
+    const board = document.getElementById('board');
+    const cardList = document.getElementById('cardList');
+    const addCardBtn = document.getElementById('addCardBtn');
+
+    let columns = {
+        backlog: [],
+        inProgress: [],
+        review: [],
+        done: []
+    };
+
+    let localStorageKey = 'kanban-board-data';
+
+
+    const loadData = () => {
+        try {
+            const data = localStorage.getItem(localStorageKey);
+            if (data) {
+                columns = JSON.parse(data);
+            }
+
+            // Add dummy cards if no data exists
+            if (columns.backlog.length === 0) {
+                addDummyCards(columns.backlog);
+            }
+
+            renderBoard();
+        } catch (error) {
+            console.error("Error loading data from localStorage:", error);
+        }
+
+    };
+
+
+    const saveData = () => {
+        localStorage.setItem(localStorageKey, JSON.stringify(columns));
+    };
+
+
+    const addCard = (columnName, cardTitle, cardContent) => {
+        columns[columnName].push({ title: cardTitle, content: cardContent });
+        renderBoard();
+        saveData();
+    };
+
+
+    const renderBoard = () => {
+        cardList.innerHTML = ''; // Clear existing cards
+
+        columns.forEach(column => {
+            const columnDiv = document.createElement('div');
+            columnDiv.className = 'column';
+
+            const columnHeader = document.createElement('div');
+            columnHeader.className = 'column-header';
+            columnHeader.textContent = column.name;
+
+            const cardContainer = document.createElement('div');
+            cardContainer.className = 'flex flex-col';
+
+
+            column.forEach(card => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.classList.add('card-drag'); // Add drag class
+
+                cardDiv.innerHTML = `
+                    <div class="card-title">${card.title}</div>
+                    <div class="card-content">${card.content}</div>
+                `;
+
+                cardContainer.appendChild(cardDiv);
+            });
+
+
+            columnDiv.appendChild(columnHeader);
+            columnDiv.appendChild(cardContainer);
+
+            cardList.appendChild(columnDiv);
+        });
+
+
+    };
+
+
+
+    const removeCard = (columnName, cardIndex) => {
+        columns[columnName].splice(cardIndex, 1); // Remove card from the column
+        renderBoard();
+        saveData();
+    };
+
+
+    const confirmDelete = (columnName, cardIndex) => {
+        return new Promise((resolve) => {
+            SweetAlert2.fire({
+                title: 'Are you sure?',
+                text: `Remove card "${columns[columnName][cardIndex].title}" from ${columnName} column?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Delete!',
+                cancelButtonText: 'No',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        removeCard(columnName, cardIndex);
+                    }
+                    resolve();
+                });
+        });
+
+    };
+
+
+
+    const moveCard = (columnName, cardIndex) => {
+        // Get the card to be moved
+        const cardToMove = columns[columnName][cardIndex];
+
+        // Remove the card from its current column
+        columns[columnName].splice(cardIndex, 1);
+
+        // Add the card to a new column (initially, it's in 'backlog')
+        columns.backlog.push(cardToMove);
+
+        renderBoard();
+        saveData();
+    };
+
+
+    const editCard = (columnName, cardIndex) => {
+        // Implement editing logic here.  For simplicity, we'll just show a prompt.
+        const card = columns[columnName][cardIndex];
+        // Use SweetAlert2 for input
+        SweetAlert2.fire({
+            title: 'Edit Card',
+            input: 'text',
+            inputValue: card.title,
+            confirmButtonText: 'Save',
+            cancelButtonText: 'Cancel',
+        }).then((result) => {
+
+            if (result.isConfirmed) {
+                card.title = result.inputValue;
+                renderBoard();
+                saveData();
+            }
+        });
+
+    };
+
+
+    const addDummyCards = (column) => {
+        for (let i = 0; i < 5; i++) {
+            const cardTitle = `Dummy Card ${i + 1}`;
+            addCard(column, cardTitle, `This is a dummy card ${i + 1}`);
+        }
+    };
+
+
+
+    addCardBtn.addEventListener('click', () => {
+        const columnName = document.querySelector('.column-header').getAttribute('data-column');
+        const cardTitle = prompt('Enter card title:');
+        if (cardTitle) {
+            const cardContent = prompt('Enter card content:');
+            if (cardContent) {
+                addCard(columnName, cardTitle, cardContent);
+            }
+        }
+    });
+
+
+
+    // Drag and Drop functionality
+
+    cardList.addEventListener('dragstart', (e) => {
+        const card = e.target.closest('.card'); // Find the closest .card element
+        e.dataTransfer.setData('text/html', card); // Set the data for drag and drop
+    });
+
+
+    cardList.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Prevent default behavior to allow drop
+    });
+
+
+    cardList.addEventListener('drop', (e) => {
+        const card = e.dataTransfer.getData('text/html'); // Get the dragged card
+        const columnName = document.querySelector('.column-header').getAttribute('data-column');
+
+        // Find the index of the card in the current column
+        const cardIndex = columns[columnName].findIndex(cardItem => card.innerHTML === `<div><div class="card-title">${cardItem.title}</div><div class="card-content">${cardItem.content}</div></div>`);
+
+        if (cardIndex !== -1) {
+            moveCard(columnName, cardIndex);
+        }
+
+    });
+
+
+
+    // Load data on page load
+    loadData();
+
+
+    // Handle column clicks (for editing/deleting) - not fully implemented as per prompt.
+    //  This would involve adding event listeners to the column headers, but it's omitted for brevity.
+
+</script>
+</body>
+</html>
+```

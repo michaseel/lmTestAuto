@@ -1,0 +1,160 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VanillaJS Kanban Board</title>
+    <link href="https://cdn.jsdelivr.net/tailwindcss/latest/tailwind.css" rel="stylesheet">
+    <style>
+        /* Add some subtle transitions */
+        .card {
+            transition: transform 0.2s ease-in-out;
+        }
+
+        /* Confetti animation */
+        .card.done {
+            animation: confetti 1s ease-in-out;
+        }
+
+        @keyframes confetti {
+            to {
+                transform: scale(1.1) rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="kanban-board">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white rounded shadow p-4 col-span-1">
+                <h2 class="text-2xl font-bold text-center mb-4">Backlog</h2>
+                <div id="backlog-column"></div>
+                <button id="add-backlog-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4" onclick="addCard('Backlog')">Add Card</button>
+            </div>
+
+            <div class="bg-white rounded shadow p-4 col-span-1">
+                <h2 class="text-2xl font-bold text-center mb-4">In Progress</h2>
+                <div id="in-progress-column"></div>
+                <button id="add-in-progress-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4" onclick="addCard('In Progress')">Add Card</button>
+            </div>
+
+            <div class="bg-white rounded shadow p-4 col-span-1">
+                <h2 class="text-2xl font-bold text-center mb-4">Review</h2>
+                <div id="review-column"></div>
+                <button id="add-review-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4" onclick="addCard('Review')">Add Card</button>
+            </div>
+
+            <div class="bg-white rounded shadow p-4 col-span-1">
+                <h2 class="text-2xl font-bold text-center mb-4">Done</h2>
+                <div id="done-column"></div>
+                <button id="add-done-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4" onclick="addCard('Done')">Add Card</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Kanban Board Logic - Namespace: kanban
+        const kanban = {
+            cards: [], // Array to store card data
+            localStorageKey: 'kanban_board_data',
+
+            loadData: () => {
+                const storedData = localStorage.getItem(kanban.localStorageKey);
+                if (storedData) {
+                    kanban.cards = JSON.parse(storedData);
+                }
+            },
+
+            saveData: () => {
+                localStorage.setItem(kanban.localStorageKey, JSON.stringify(kanban.cards));
+            },
+
+            addCard: (column) => {
+                const newCard = {
+                    id: Date.now(), // Unique ID
+                    text: `Card ${kanban.cards.length + 1}`, // Placeholder text
+                    column: column,
+                    done: false,
+                };
+                kanban.cards.push(newCard);
+                kanban.saveData();
+                renderCards();
+            },
+
+            deleteCard: (cardId) => {
+                kanban.cards = kanban.cards.filter(card => card.id !== cardId);
+                kanban.saveData();
+                renderCards();
+            },
+
+            moveCard: (cardId, fromColumn, toColumn) => {
+                const card = kanban.cards.find(card => card.id === cardId);
+                if (!card) return;
+
+                const fromColumnIndex = kanban.cards.findIndex(card => card.id === card.id);
+                const toColumnIndex = kanban.cards.findIndex(card => card.id === card.id);
+
+                if (fromColumnIndex === -1 || toColumnIndex === -1) return; // Should not happen
+
+                kanban.cards.splice(fromColumnIndex, 1);
+                kanban.cards.push({ id: Date.now(), text: card.text, column: toColumn, done: card.done });
+                kanban.saveData();
+                renderCards();
+            },
+
+            renderCards: () => {
+                const container = document.getElementById('backlog-column'); // Get the specific column element
+
+                // Clear existing cards in the container
+                container.innerHTML = '';
+
+                kanban.cards.forEach(card => {
+                    const cardElement = document.createElement('div');
+                    cardElement.classList.add('bg-white rounded shadow p-4');
+                    cardElement.innerHTML = `
+                        <div class="p-2 flex items-center">
+                            ${card.text}
+                            <button class="bg-red-500 hover:bg-red-700 text-white px-2 rounded" onclick="deleteCard(${card.id})">Delete</button>
+                        </div>
+                    `;
+                    container.appendChild(cardElement);
+                });
+            }
+        };
+
+        // Event listeners for adding cards to each column
+        document.getElementById('add-backlog-button').addEventListener('click', () => {
+            kanban.addCard('Backlog');
+        });
+
+        document.getElementById('add-in-progress-button').addEventListener('click', () => {
+            kanban.addCard('In Progress');
+        });
+
+        document.getElementById('add-review-button').addEventListener('click', () => {
+            kanban.addCard('Review');
+        });
+
+        document.getElementById('add-done-button').addEventListener('click', () => {
+            kanban.addCard('Done');
+        });
+
+        // Initial load of data
+        kanban.loadData();
+
+        // Function to handle card deletion with confirmation
+        function deleteCard(cardId) {
+            if (confirm('Are you sure you want to delete this card?')) {
+                kanban.deleteCard(cardId);
+            }
+        }
+
+        // Function to render cards in the appropriate column.
+        function renderCards() {
+            kanban.renderCards(); // Use the kanban.renderCards function
+        }
+
+    </script>
+
+</body>
+</html>

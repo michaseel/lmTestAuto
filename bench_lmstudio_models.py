@@ -92,60 +92,45 @@ def ensure_server():
         time.sleep(0.5)
     raise RuntimeError("LM Studio server didn't come up at http://127.0.0.1:1234")
 
-def _norm_key(s: str) -> str:
-    s = (s or "").lower()
-    if "/" in s:
-        s = s.split("/")[-1]
-    return re.sub(r"[^a-z0-9]+", "", s)
-
-
 def list_models():
-    # Gather REST API ids (for chat) and CLI keys (for lms load)
-    rest_ids = []
-    try:
-        r = requests.get(f"{REST_BASE}/models", timeout=5)
-        r.raise_for_status()
-        data = r.json()
-        rest_ids = [m.get("id") for m in data.get("data", []) if m.get("type") == "llm" and m.get("id")]
-    except Exception:
-        pass
-
-    cli_map = {}
-    cli_rows = []
+    # Gather all model variants from lms ls --llm --json
+    # Each variant (e.g. @4bit, @8bit) is treated as a separate model to benchmark
+    # Note: lms CLI doesn't support @variant syntax, but REST API does (JIT loading)
+    results = []
     try:
         ls = run(["lms", "ls", "--llm", "--json"]).stdout
         arr = json.loads(ls)
         for m in arr or []:
             if not m:
                 continue
-            mid = m.get("id")
-            name = m.get("name") or m.get("model")
-            repo = m.get("repo")
-            cli_key = None
-            if isinstance(mid, str) and "/" in mid:
-                cli_key = mid
-            elif repo and name:
-                cli_key = f"{repo}/{name}"
-            elif name:
-                cli_key = name
-            else:
+            model_key = m.get("modelKey")
+            if not model_key:
                 continue
-            cli_rows.append({"cli_key": cli_key, "name": name})
-            cli_map[_norm_key(cli_key)] = cli_key
-            if name:
-                cli_map[_norm_key(name)] = cli_key
+
+            variants = m.get("variants", [])
+            display_name = m.get("displayName") or model_key
+
+            if variants:
+                # Add each variant as a separate model entry
+                for variant in variants:
+                    # Extract quantization suffix for display (e.g. "@4bit" -> "4bit")
+                    quant_suffix = variant.split("@")[-1] if "@" in variant else ""
+                    variant_display = f"{display_name} ({quant_suffix})" if quant_suffix else display_name
+                    results.append({
+                        "api_id": variant,         # Used for API calls (supports @variant)
+                        "cli_key": model_key,      # Used for lms load (no @variant!)
+                        "display": variant_display,
+                    })
+            else:
+                # No variants array - use modelKey directly
+                results.append({
+                    "api_id": model_key,
+                    "cli_key": model_key,
+                    "display": display_name,
+                })
     except Exception:
         pass
 
-    results = []
-    if rest_ids:
-        for api_id in rest_ids:
-            cli_key = cli_map.get(_norm_key(api_id)) or api_id
-            results.append({"api_id": api_id, "cli_key": cli_key, "display": api_id})
-    else:
-        for row in cli_rows:
-            cli_key = row["cli_key"]
-            results.append({"api_id": row.get("name") or cli_key, "cli_key": cli_key, "display": row.get("name") or cli_key})
     return results
 
 def unload_all():
@@ -154,11 +139,9 @@ def unload_all():
     except subprocess.CalledProcessError:
         pass
 
-def load_model(model_id):
+def load_model_cli(model_id):
+    """Load model using lms CLI (does not support @variant syntax)."""
     t0 = time.perf_counter()
-    # Allow JIT via REST too, but we want explicit load to measure load time
-    # lms load accepts a "model key" from `lms ls`; use --gpu to maximize offload
-    # We pass model_id; LM Studio resolves it (works for downloaded model keys).
     cmd = ["lms", "load", model_id, "--gpu", GPU_SETTING]
     if NUM_CTX is not None:
         cmd.extend(["--context-length", str(NUM_CTX)])
@@ -166,36 +149,43 @@ def load_model(model_id):
     run(cmd)
     return time.perf_counter() - t0
 
+def load_model_jit(model_id, timeout_s=120):
+    """Load model using REST API JIT loading (supports @variant syntax)."""
+    t0 = time.perf_counter()
+    # Make a minimal chat request to trigger JIT loading
+    payload = {
+        "model": model_id,
+        "messages": [{"role": "user", "content": "Hi"}],
+        "max_tokens": 1,
+        "stream": False,
+    }
+    if NUM_CTX is not None:
+        payload["num_ctx"] = NUM_CTX
+    r = requests.post(f"{REST_BASE}/chat/completions", json=payload, timeout=(5, timeout_s))
+    r.raise_for_status()
+    return time.perf_counter() - t0
+
 def load_with_fallbacks(api_id: str, cli_key: str):
-    """Try loading with suggested CLI key, then fall back to a few derived variants.
+    """Load model, using JIT for variants with @ or CLI otherwise.
     Returns (used_key, load_time_seconds). Raises on failure.
     """
-    candidates = []
-    seen = set()
-    def add(c):
-        if c and c not in seen:
-            candidates.append(c); seen.add(c)
-    add(cli_key)
-    add(api_id)
-    # Replace @8bit -> -8bit
+    # If api_id contains @, we need JIT loading (CLI doesn't support @variant)
     if "@" in api_id:
-        add(api_id.replace("@", "-"))
-    # Uppercase variant (common in LM Studio model keys)
-    base = api_id.replace("@", "-")
-    add(base.upper())
-    # Prepend a common namespace if none present
-    if "/" not in base:
-        add(f"lmstudio-community/{base}")
-        add(f"lmstudio-community/{base.upper()}")
-    last_exc = None
-    for cand in candidates:
+        t = load_model_jit(api_id)
+        return api_id, t
+
+    # Otherwise use CLI
+    try:
+        t = load_model_cli(cli_key)
+        return cli_key, t
+    except Exception as e:
+        # Fallback to JIT if CLI fails
         try:
-            t = load_model(cand)
-            return cand, t
-        except Exception as e:
-            last_exc = e
-            continue
-    raise last_exc or RuntimeError(f"Failed to load model for {api_id}")
+            t = load_model_jit(api_id)
+            return api_id, t
+        except Exception:
+            pass
+        raise e
 
 ansi_escape = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 

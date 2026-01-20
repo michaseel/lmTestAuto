@@ -1,0 +1,413 @@
+We need to output a single HTML file with Tailwind via CDN, using vanilla JS, implementing a Kanban board with columns Backlog, In Progress, Review, Done. Cards are draggable across columns, editable in place, persisted in localStorage using our own namespace, deletable with confirmation prompt (but not using alert/prompt). Use Tailwind CDN for styling. Add subtle CSS transitions and confetti animation when moving a card to Done. Provide thorough comments. No alerts or prompts for editing/deleting; we need to implement custom modal or inline editing perhaps using contenteditable or input fields. Use confirm() maybe allowed? They said don't use window.alert or window.prompt to add/edit/delete cards; but confirm is a function, maybe okay? Safer to avoid any of those. Use custom UI: maybe a delete button that shows a custom modal or uses confirm? They said no window.alert or window.prompt; confirm is also a built-in dialog, maybe okay but it's also a built-in. Better avoid any built-in dialogs; we can implement our own confirmation using a custom overlay.
+
+Implement adding cards via a button that opens an inline edit or a small form. Use contenteditable to edit in place.
+
+Persist using localStorage with namespace e.g., 'myKanbanApp'.
+
+When moving a card to Done column, trigger confetti animation using maybe a simple CSS animation or JS using a library? We can implement simple confetti using CSS keyframes or using a small script that creates particles.
+
+We need to include Tailwind CSS via CDN: <script src="https://cdn.tailwindcss.com"></script>
+
+Add comments.
+
+Make sure code is self-contained.
+
+Implement drag-and-drop using HTML5 Drag and Drop API.
+
+Implement localStorage persistence: on load, load data; on any change, save.
+
+Use namespace e.g., 'kanbanApp'.
+
+Add dummy cards if none exist.
+
+Add confetti when moving to Done column; maybe using a simple confetti library like confetti.js? But we can implement simple particles using JS.
+
+We need to output plain HTML only; no extra explanation.
+
+Let's craft HTML.
+
+Structure:
+
+- Container with grid of columns.
+- Each column is a div with data-column attribute.
+- Cards are divs inside columns with draggable attribute.
+
+Implement drag events: dragstart, dragover, drop, drop to change column.
+
+When dropping, move card to new column, update DOM, save state.
+
+When editing card: maybe each card has a 'edit' button that toggles a contenteditable span.
+
+When editing, on blur or Enter key, save edited text and update localStorage.
+
+Deletion: each card has a delete button; clicking triggers custom confirmation modal; on confirm, remove card and save.
+
+Add "Add card" button per column: maybe a plus button that creates a new card with placeholder text.
+
+Confetti: when moving to Done column, add class 'done' that triggers CSS animation; also create confetti particles via JS.
+
+Simplify: use CSS transition for opacity and transform.
+
+Add confetti container overlay that shows particles; we can create particles via JS when a card enters Done.
+
+Implement namespace: const NS = 'kanbanApp';
+
+Persist data as JSON array of cards each with id, content, column.
+
+On load, retrieve from localStorage.getItem(NS + '-data'), parse, if empty create dummy cards.
+
+Implement functions: renderBoard, saveData, addCard, editCard, deleteCard, moveCard.
+
+Implement drag events.
+
+Implement confetti: create a function launchConfetti() that creates many small divs with random colors and positions, animate them up and fade out.
+
+Make sure to comment thoroughly.
+
+Now produce final HTML.
+</think>
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kanban Board – Vanilla JS + Tailwind</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* Confetti animation – simple falling shapes */
+  .confetti {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 9999;
+  }
+  .confetti-piece {
+    position: absolute;
+    width: 8px; height: 10px;
+    background: rgba(255,0,0,.7);
+    opacity: 0;
+    animation: confetti 1.5s forwards;
+  }
+  @keyframes confetti {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+  }
+</style>
+</head>
+<body class="bg-gray-100 font-sans leading-relaxed">
+
+<!-- ========================= APPLICATION NAMESPACE ========================= -->
+<script>
+  // All data lives under this namespace to avoid collisions
+  const NS = 'kanbanApp';
+</script>
+
+<!-- ========================= MAIN BOARD LAYOUT ========================= -->
+<div class="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+
+  <!-- Column Headers -->
+  <div class="grid grid-cols-4 gap-2">
+    <div id="col-backlog" class="bg-blue-100 p-4 rounded-lg font-medium">Backlog</div>
+    <div id="col-progress" class="bg-yellow-100 p-4 rounded-lg font-medium">In Progress</div>
+    <div id="col-review"   class="bg-orange-100 p-4 rounded-lg font-medium">Review</div>
+    <div id="col-done"    class="bg-green-100 p-4 rounded-lg font-medium">Done</div>
+  </div>
+
+  <!-- Cards container – each column will hold its cards here -->
+  <div id="board" class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4"></div>
+
+  <!-- Add‑Card Buttons – one per column -->
+  <div class="flex flex-col gap-2 mt-4">
+    <button id="add-backlog"   class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700">Add Backlog</button>
+    <button id="add-progress"  class="bg-yellow-600 text-white px-3 py-2 rounded hover:bg-yellow-700">Add In‑Progress</button>
+    <button id="add-review"    class="bg-orange-600 text-white px-3 py-2 rounded hover:bg-orange-700">Add Review</button>
+    <button id="add-done"      class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700">Add Done</button>
+  </div>
+
+</div>
+
+<!-- Confetti overlay (hidden until needed) -->
+<div id="confettiOverlay" class="hidden"></div>
+
+<!-- ========================= CARD TEMPLATE ========================= -->
+<!-- Hidden template used to clone cards -->
+<template id="card-template">
+  <div class="card bg-white rounded shadow p-3 flex items-start space-x-2 cursor-move"
+       draggable="true"
+       data-id="">
+    <span class="flex-1 contenteditable p-1 bg-gray-50 rounded border border-gray-200"
+          data-editable></span>
+    <button class="delete-btn text-red-600 hover:text-red-800" title="Delete">
+      ✕
+    </button>
+  </div>
+</template>
+
+<script>
+  /* ==============================================================
+   * Helper: generate a short unique ID
+   * ============================================================== */
+  function uid() {
+    return 'c_' + Math.random().toString(36).substr(2, 9);
+  }
+
+  /* ==============================================================
+   * Load persisted data or create dummy cards
+   * ============================================================== */
+  function loadState() {
+    const raw = localStorage.getItem(NS + '-data');
+    if (raw) {
+      return JSON.parse(raw);
+    }
+    // Dummy data if nothing stored yet
+    return [
+      {id: uid(), content: 'Design homepage',      column: 'backlog'},
+      {id: uid(), content: 'Implement auth',       column: 'in-progress'},
+      {id: uid(), content: 'Write unit tests',    column: 'review'},
+      {id: uid(), content: 'Deploy to prod',      column: 'done'}
+    ];
+  }
+
+  /* ==============================================================
+   * Save current board state to localStorage
+   * ============================================================== */
+  function saveState(cards) {
+    localStorage.setItem(NS + '-data', JSON.stringify(cards));
+  }
+
+  /* ==============================================================
+   * Render the board from a cards array
+   * ============================================================== */
+  function renderBoard(cards) {
+    const board = document.getElementById('board');
+    board.innerHTML = ''; // clear
+
+    cards.forEach(card => {
+      const colEl = document.getElementById('col-' + card.column);
+      if (!colEl) return; // safety
+
+      // Clone template and fill data
+      const tmpl = document.getElementById('card-template').content.firstElementChild.cloneNode(true);
+      tmpl.dataset.id = card.id;
+      tmpl.setAttribute('draggable', true);
+      tmpl.classList.add('dragged-id', card.column); // used during drag
+      const editable = tmpl.querySelector('[data-editable]');
+      editable.textContent = card.content;
+      editable.setAttribute('data-id', card.id);
+      tmpl.queryName = 'data-id'; // not needed
+
+      // Delete button handler
+      tmpl.querySelector('.delete-btn').addEventListener('click', e => {
+        e.stopPropagation(); // prevent drag start
+        showDeleteConfirmation(card.id);
+      });
+
+      // Editing – commit on blur or Enter key
+      editable.addEventListener('input', () => {
+        // Debounce a bit
+        clearTimeout(card._editTimer);
+        card._editTimer = setTimeout(() => {
+          editCard(card.id, editable.textContent.trim());
+        }, 300);
+      });
+      editable.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          clearTimeout(card._editTimer);
+          editCard(card.id, editable.textContent.trim());
+        }
+      });
+
+      // Drag handlers
+      tmpl.addEventListener('dragstart', startDrag);
+      tmpl.addEventListener('dragover', preventDefault);
+      tmpl.addEventListener('drop', drop);
+      tmpl.addEventListener('dragend', dropEnd);
+
+      // Append to column
+      colEl.appendChild(tmpl);
+    });
+  }
+
+  /* ==============================================================
+   * Prevent default drag behavior
+   * ============================================================== */
+  function preventDefault(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  /* ==============================================================
+   * Drag start – store source column & card id
+   * ============================================================== */
+  function startDrag(e) {
+    const card = e.currentTarget;
+    const id = card.dataset.id;
+    const col = card.dataset.column; // set later by dropEnd
+    e.dataTransfer.setData('text/plain', id);
+    // Store source column on the element for later use
+    card.dataset.sourceCol = col;
+    // Add visual cue
+    card.classList.add('opacity-50');
+  }
+
+  /* ==============================================================
+   * Drop – move card to new column
+   * ============================================================== */
+  function drop(e) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('text/plain');
+    const targetCol = e.currentTarget.id.replace('col-', '');
+    moveCard(id, targetCol);
+  }
+
+  /* ==============================================================
+   * Drag end – clean up visual state
+   * ============================================================== */
+  function dropEnd(e) {
+    const card = e.currentTarget;
+    card.classList.remove('opacity-50');
+    // Reset data attributes
+    delete card.dataset.sourceCol;
+    // Reset dropEffect (some browsers need it)
+    e.dataTransfer.dropEffect = 'none';
+  }
+
+  /* ==============================================================
+   * Move a card from one column to another
+   * ============================================================== */
+  function moveCard(cardId, newColumn) {
+    const cards = loadState();
+    const idx = cards.findIndex(c => c.id === cardId);
+    if (idx === -1) return; // not found
+
+    // Update column property
+    cards[idx].column = newColumn;
+
+    // Persist
+    saveState(cards);
+
+    // Re‑render board (preserves drag‑and‑drop state)
+    renderBoard(cards);
+
+    // If the card landed in the "done" column, trigger confetti
+    if (newColumn === 'done') launchConfetti();
+  }
+
+  /* ==============================================================
+   * Edit a card’s text
+   * ============================================================== */
+  function editCard(cardId, newText) {
+    const cards = loadState();
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+    card.content = newText.trim();
+    saveState(cards);
+    renderBoard(cards);
+  }
+
+  /* ==============================================================
+   * Show a custom confirmation modal before deleting a card
+   * ============================================================== */
+  function showDeleteConfirmation(cardId) {
+    // Create overlay if it doesn't exist
+    let overlay = document.getElementById('deleteOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'deleteOverlay';
+      overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      overlay.innerHTML = `
+        <div class="bg-white rounded p-4 w-80 mx-4 shadow-lg">
+          <p class="text-center mb-2">Delete this card?</p>
+          <div class="flex justify-end space-x-2">
+            <button id="confirmDelete" class="bg-red-600 text-white px-3 py-1 rounded">Delete</button>
+            <button id="cancelDelete" class="bg-gray-300 text-gray-800 px-3 py-1 rounded">Cancel</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      // Cancel handler
+      overlay.querySelector('#cancelDelete').addEventListener('click', () => overlay.remove());
+
+      // Confirm handler
+      overlay.querySelector('#confirmDelete').addEventListener('click', () => {
+        deleteCard(cardId);
+        overlay.remove();
+      });
+    }
+    overlay.style.display = 'flex';
+  }
+
+  /* ==============================================================
+   * Delete a card permanently
+   * ============================================================== */
+  function deleteCard(cardId) {
+    let cards = loadState();
+    cards = cards.filter(c => c.id !== cardId);
+    saveState(cards);
+    renderBoard(cards);
+  }
+
+  /* ==============================================================
+   * Add a new card to a specific column
+   * ============================================================== */
+  function addCard(column, defaultText = '') {
+    const cards = loadState();
+    cards.push({id: uid(), content: defaultText, column});
+    saveState(cards);
+    renderBoard(cards);
+  }
+
+  /* ==============================================================
+   * Wire up “Add Card” buttons
+   * ============================================================== */
+  document.getElementById('add-backlog').onclick = () => addCard('backlog', 'New card in Backlog');
+  document.getElementById('add-progress').onclick = () => addCard('in-progress', 'New card in In‑Progress');
+  document.getElementById('add-review').onclick   = () => addCard('review', 'New card in Review');
+  document.getElementById('add-done').onclick      = () => addCard('done', 'New card in Done');
+
+  /* ==============================================================
+   * Confetti animation when a card reaches “Done”
+   * ============================================================== */
+  function launchConfetti() {
+    const overlay = document.getElementById('confettiOverlay');
+    overlay.innerHTML = ''; // clear previous particles
+    overlay.classList.remove('hidden');
+
+    // Create a bunch of confetti pieces
+    const count = 30;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      // Random color
+      const hue = Math.floor(Math.random() * 360);
+      piece.style.background = `hsl(${hue}, 80%, 50%)`;
+      // Random size
+      const size = Math.random() * 8 + 4;
+      piece.style.width = `${size}px`;
+      piece.style.height = `${size}px`;
+      // Random position at top
+      piece.style.left = `${Math.random() * 100}vw`;
+      piece.style.top = `${-10 + Math.random() * 10}vh`;
+      overlay.appendChild(piece);
+    }
+
+    // Remove overlay after animation ends
+    setTimeout(() => overlay.classList.add('hidden'), 2000);
+  }
+
+  /* ==============================================================
+   * Initialize app
+   * ============================================================== */
+  (function init() {
+    const cards = loadState();
+    renderBoard(cards);
+  })();
+</script>
+
+</body>
+</html>
+```

@@ -1,0 +1,333 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vanilla Kanban Board</title>
+<!-- Tailwind CSS via CDN -->
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.css" rel="stylesheet">
+<style>
+/* Custom styles for draggable cards */
+.card {
+  cursor: grab;
+}
+.dragging {
+  opacity: .6;
+}
+.column {
+  min-height: 200px;
+}
+/* Simple confetti styles */
+#confetti-canvas {
+  position: fixed;
+  top:0; left:0; width:100%; height:100%;
+  pointer-events:none;
+  z-index:9999;
+}
+</style>
+</head>
+<body class="bg-gray-100">
+
+<div class="container mx-auto py-6">
+  <h1 class="text-3xl font-bold text-center mb-8">Kanban Board</h1>
+  <div id="board" class="grid grid-cols-4 gap-6">
+    <!-- Columns will be inserted here by JS -->
+  </div>
+</div>
+
+<!-- Modal for adding/editing cards -->
+<div id="modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4">
+    <h2 id="modal-title" class="text-xl font-semibold"></h2>
+    <textarea id="card-input" rows="4" class="w-full border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+    <div class="flex justify-end space-x-3">
+      <button id="modal-cancel" class="px-4 py-1 rounded bg-gray-300 hover:bg-gray-400">Cancel</button>
+      <button id="modal-save" class="px-4 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700">Save</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+// Namespace for localStorage
+const STORAGE_KEY = 'vanilla-kanban-board';
+
+// Column definitions
+const columns = [
+  { id: 'backlog', title: 'Backlog' },
+  { id: 'in-progress', title: 'In Progress' },
+  { id: 'review', title: 'Review' },
+  { id: 'done', title: 'Done' }
+];
+
+// Initial dummy cards if storage is empty
+const dummyCards = [
+  { id: generateId(), title: 'Setup project', column: 'backlog' },
+  { id: generateId(), title: 'Design UI', column: 'in-progress' },
+  { id: generateId(), title: 'Code review', column: 'review' },
+  { id: generateId(), title: 'Deploy to prod', column: 'done' }
+];
+
+// In‑memory state
+let boardState = [];
+
+// ---------- Utility Functions ----------
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(boardState));
+}
+
+function loadState() {
+  const data = localStorage.getItem(STORAGE_KEY);
+  if (data) {
+    boardState = JSON.parse(data);
+  } else {
+    boardState = dummyCards;
+    saveState();
+  }
+}
+
+// ---------- Modal handling ----------
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modal-title');
+const cardInput = document.getElementById('card-input');
+const modalSave = document.getElementById('modal-save');
+const modalCancel = document.getElementById('modal-cancel');
+
+let currentEditCard = null; // card object being edited
+
+function openModal(title, initialText = '') {
+  modalTitle.textContent = title;
+  cardInput.value = initialText;
+  modal.classList.remove('hidden');
+  cardInput.focus();
+}
+
+function closeModal() {
+  modal.classList.add('hidden');
+  currentEditCard = null;
+}
+
+modalSave.onclick = () => {
+  const text = cardInput.value.trim();
+  if (!text) return;
+  if (currentEditCard) {
+    currentEditCard.title = text;
+  } else {
+    // Creating new card
+    const columnId = modal.dataset.column;
+    const newCard = { id: generateId(), title: text, column: columnId };
+    boardState.push(newCard);
+  }
+  saveState();
+  renderBoard();
+  closeModal();
+};
+
+modalCancel.onclick = closeModal;
+
+// ---------- Confetti ----------
+const confettiCanvas = document.getElementById('confetti-canvas');
+const ctx = confettiCanvas.getContext('2d');
+let confettiParticles = [];
+
+function resizeCanvas() {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function launchConfetti() {
+  const colors = ['#FFC700', '#FF0000', '#2E3191', '#41D3BD'];
+  for (let i = 0; i < 100; i++) {
+    confettiParticles.push({
+      x: Math.random() * confettiCanvas.width,
+      y: -10,
+      r: 5 + Math.random() * 5,
+      d: Math.random() * 3 + 2,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.floor(Math.random() * 10) - 5,
+      tiltAngleIncremental: (Math.PI / 180) * (Math.random() * 3 + 2),
+      tiltAngle: 0
+    });
+  }
+}
+
+function renderConfetti() {
+  ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  for (let i = 0; i < confettiParticles.length; i++) {
+    const p = confettiParticles[i];
+    ctx.beginPath();
+    ctx.lineWidth = p.r;
+    ctx.strokeStyle = p.color;
+    ctx.moveTo(p.x + p.tilt, p.y);
+    ctx.lineTo(p.x + p.tilt + 5, p.y + p.tilt);
+    ctx.stroke();
+
+    p.tiltAngle += p.tiltAngleIncremental;
+    p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
+    p.tilt = Math.sin(p.tiltAngle - (i / 3)) * 5;
+
+    if (p.y > confettiCanvas.height) {
+      p.y = -10;
+    }
+  }
+  // Remove particles that have moved off screen
+  confettiParticles = confettiParticles.filter(p => p.y < confettiCanvas.height);
+}
+
+setInterval(renderConfetti, 30);
+
+// ---------- Drag & Drop ----------
+let draggedCard = null;
+
+function handleDragStart(e) {
+  draggedCard = e.target.closest('.card');
+  e.dataTransfer.setData('text/plain', draggedCard.dataset.id);
+  setTimeout(() => draggedCard.classList.add('dragging'), 0);
+}
+
+function handleDragEnd(e) {
+  draggedCard.classList.remove('dragging');
+  draggedCard = null;
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+}
+
+function handleDrop(e, columnId) {
+  e.preventDefault();
+  const cardId = e.dataTransfer.getData('text/plain');
+  const card = boardState.find(c => c.id === cardId);
+  if (!card) return;
+  const previousColumn = card.column;
+  card.column = columnId;
+  saveState();
+  renderBoard();
+
+  // Confetti if moved to Done
+  if (columnId === 'done' && previousColumn !== 'done') {
+    launchConfetti();
+  }
+}
+
+// ---------- Rendering ----------
+function createCardElement(card) {
+  const cardEl = document.createElement('div');
+  cardEl.className = 'card bg-white rounded shadow p-3 mb-2 cursor-pointer transition-all duration-200';
+  cardEl.draggable = true;
+  cardEl.dataset.id = card.id;
+
+  const titleEl = document.createElement('div');
+  titleEl.textContent = card.title;
+  titleEl.contentEditable = false; // initially not editable
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.innerHTML = '&times;';
+  deleteBtn.className = 'text-red-600 hover:text-red-800 float-right';
+  deleteBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (confirm('Delete this card?')) {
+      boardState = boardState.filter(c => c.id !== card.id);
+      saveState();
+      renderBoard();
+    }
+  };
+
+  // Double click to edit
+  cardEl.ondblclick = () => {
+    titleEl.contentEditable = true;
+    titleEl.focus();
+  };
+
+  // Save edit on blur
+  titleEl.onblur = () => {
+    titleEl.contentEditable = false;
+    card.title = titleEl.textContent.trim();
+    saveState();
+  };
+
+  cardEl.appendChild(deleteBtn);
+  cardEl.appendChild(titleEl);
+
+  // Drag events
+  cardEl.addEventListener('dragstart', handleDragStart);
+  cardEl.addEventListener('dragend', handleDragEnd);
+
+  return cardEl;
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = ''; // clear
+
+  columns.forEach(col => {
+    const colDiv = document.createElement('div');
+    colDiv.className = 'column bg-gray-200 rounded p-4';
+    colDiv.dataset.columnId = col.id;
+
+    const header = document.createElement('h2');
+    header.className = 'text-xl font-semibold mb-4';
+    header.textContent = col.title;
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'mb-4 px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700';
+    addBtn.textContent = '+ Add card';
+    addBtn.onclick = () => {
+      modal.dataset.column = col.id;
+      openModal(`Add card to ${col.title}`);
+    };
+
+    const cardsContainer = document.createElement('div');
+    cardsContainer.className = 'space-y-2';
+
+    boardState.filter(c => c.column === col.id).forEach(card => {
+      const cardEl = createCardElement(card);
+      cardsContainer.appendChild(cardEl);
+    });
+
+    // Drag events on column
+    colDiv.addEventListener('dragover', handleDragOver);
+    colDiv.addEventListener('drop', e => handleDrop(e, col.id));
+
+    colDiv.appendChild(header);
+    colDiv.appendChild(addBtn);
+    colDiv.appendChild(cardsContainer);
+    board.appendChild(colDiv);
+  });
+}
+
+// ---------- Init ----------
+loadState();
+renderBoard();
+
+</script>
+</body>
+</html>
+```
+
+**Explanation of the key parts**
+
+1. **Data Persistence** – All cards are stored in `boardState` and written to `localStorage` under the key `vanilla-kanban-board`. On page load we read from storage or fall back to a set of dummy cards.
+
+2. **Columns & Cards** – The board has four columns (`Backlog`, `In Progress`, `Review`, `Done`). Each card is a draggable `<div>` that can be moved between columns using the HTML5 Drag & Drop API.
+
+3. **In‑place Editing** – Double‑clicking a card makes its title editable (`contentEditable`). When the element loses focus, the change is saved.
+
+4. **Adding & Deleting** – An “Add card” button opens a custom modal where the user can type the title. Deleting a card asks for confirmation via `confirm()` (acceptable as per instruction).
+
+5. **LocalStorage Namespace** – All data lives under the constant `STORAGE_KEY`, preventing clashes with other apps.
+
+6. **Confetti Animation** – When a card is dropped into the “Done” column, a quick canvas‑based confetti burst appears. The animation uses simple physics and runs on a `setInterval`.
+
+7. **Styling** – Tailwind CSS (CDN) gives a modern, vibrant look with subtle transitions on cards and buttons. The board layout is responsive thanks to Tailwind’s grid utilities.
+
+8. **Comments** – The script contains inline comments explaining each function and significant block of logic, making it easy to understand and maintain.
+
+Save the file as `index.html` and open it in a browser. The Kanban board will load, persist data across reloads, allow drag‑and‑drop, inline editing, adding/deleting cards, and celebrate completed tasks with confetti.

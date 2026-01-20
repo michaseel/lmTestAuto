@@ -1,0 +1,581 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Confetti library via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* Custom transitions for smooth card movements */
+        .card {
+            transition: all 0.3s ease;
+        }
+        
+        .card.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+            z-index: 100;
+        }
+        
+        /* Custom animation for confetti */
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+            }
+        }
+        
+        .confetti-piece {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            pointer-events: none;
+            animation: confetti-fall 3s linear forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-2">Kanban Board</h1>
+            <p class="text-gray-600">Drag, edit, and manage your tasks efficiently</p>
+        </header>
+
+        <!-- Kanban Board Container -->
+        <div class="flex space-x-6 overflow-x-auto pb-8">
+            <!-- Backlog Column -->
+            <div class="min-w-80 bg-gray-50 rounded-lg p-4 shadow-md flex flex-col">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <span class="bg-gray-300 text-gray-800 px-2 py-1 rounded-full text-xs font-bold">Backlog</span>
+                    <button class="ml-auto bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-1 px-3 rounded text-sm transition-colors duration-200" 
+                            onclick="addCard('backlog')">
+                        Add Card
+                    </button>
+                </h2>
+                <div id="backlog" class="flex-1 min-h-96 space-y-3 p-2" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+            </div>
+
+            <!-- In Progress Column -->
+            <div class="min-w-80 bg-gray-50 rounded-lg p-4 shadow-md flex flex-col">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <span class="bg-blue-300 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">In Progress</span>
+                    <button class="ml-auto bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-3 rounded text-sm transition-colors duration-200" 
+                            onclick="addCard('in-progress')">
+                        Add Card
+                    </button>
+                </h2>
+                <div id="in-progress" class="flex-1 min-h-96 space-y-3 p-2" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+            </div>
+
+            <!-- Review Column -->
+            <div class="min-w-80 bg-gray-50 rounded-lg p-4 shadow-md flex flex-col">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <span class="bg-yellow-300 text-yellow-800 px-2 py-1 rounded-full text-xs font-bold">Review</span>
+                    <button class="ml-auto bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded text-sm transition-colors duration-200" 
+                            onclick="addCard('review')">
+                        Add Card
+                    </button>
+                </h2>
+                <div id="review" class="flex-1 min-h-96 space-y-3 p-2" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+            </div>
+
+            <!-- Done Column -->
+            <div class="min-w-80 bg-gray-50 rounded-lg p-4 shadow-md flex flex-col">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <span class="bg-green-300 text-green-800 px-2 py-1 rounded-full text-xs font-bold">Done</span>
+                    <button class="ml-auto bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm transition-colors duration-200" 
+                            onclick="addCard('done')">
+                        Add Card
+                    </button>
+                </h2>
+                <div id="done" class="flex-1 min-h-96 space-y-3 p-2" ondragover="allowDrop(event)" ondrop="drop(event)"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Namespace for localStorage to avoid conflicts
+        const KANBAN_NAMESPACE = 'kanban-board-v1';
+
+        // Initialize the board when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeBoard();
+        });
+
+        /**
+         * Initialize the Kanban board by loading data from localStorage or creating dummy cards
+         */
+        function initializeBoard() {
+            // Load saved board state from localStorage or create default state
+            const savedState = localStorage.getItem(KANBAN_NAMESPACE);
+            
+            if (savedState) {
+                // Parse saved state and populate the board
+                const boardState = JSON.parse(savedState);
+                populateBoardFromState(boardState);
+            } else {
+                // Create dummy cards if no data exists
+                createDummyCards();
+            }
+        }
+
+        /**
+         * Populate the board with cards from saved state
+         * @param {Object} boardState - The saved board state object
+         */
+        function populateBoardFromState(boardState) {
+            // Iterate through each column and create cards
+            const columns = ['backlog', 'in-progress', 'review', 'done'];
+            
+            columns.forEach(columnId => {
+                const column = document.getElementById(columnId);
+                column.innerHTML = ''; // Clear existing content
+                
+                if (boardState[columnId] && Array.isArray(boardState[columnId])) {
+                    boardState[columnId].forEach(cardData => {
+                        createCardElement(cardData, column);
+                    });
+                }
+            });
+        }
+
+        /**
+         * Create dummy cards for initial setup
+         */
+        function createDummyCards() {
+            const dummyCards = [
+                { id: 'card-1', title: 'Design the homepage layout', description: 'Create wireframes for the main page', column: 'backlog' },
+                { id: 'card-2', title: 'Implement user authentication', description: 'Set up login and registration system', column: 'backlog' },
+                { id: 'card-3', title: 'Write API documentation', description: 'Document all endpoints with examples', column: 'in-progress' },
+                { id: 'card-4', title: 'Review code changes', description: 'Check for best practices and security issues', column: 'review' },
+                { id: 'card-5', title: 'Fix mobile responsiveness issues', description: 'Ensure site works on all screen sizes', column: 'done' },
+                { id: 'card-6', title: 'Set up CI/CD pipeline', description: 'Configure automated testing and deployment', column: 'done' }
+            ];
+            
+            dummyCards.forEach(card => {
+                createCardElement(card);
+            });
+        }
+
+        /**
+         * Create a new card element with the provided data
+         * @param {Object} cardData - Card properties including id, title, description, column
+         * @param {HTMLElement} container - Optional container to append the card to
+         */
+        function createCardElement(cardData, container = null) {
+            // Create card element
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow-md p-4 cursor-move card';
+            card.draggable = true;
+            card.setAttribute('data-id', cardData.id);
+            
+            // Set up drag event listeners
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dblclick', handleCardDoubleClick);
+            
+            // Create card content
+            const titleElement = document.createElement('h3');
+            titleElement.className = 'font-bold text-gray-800 mb-2 text-sm';
+            titleElement.textContent = cardData.title || 'Untitled Task';
+            titleElement.contentEditable = false;
+            
+            const descriptionElement = document.createElement('p');
+            descriptionElement.className = 'text-gray-600 text-xs mb-3 leading-relaxed';
+            descriptionElement.textContent = cardData.description || 'No description provided.';
+            descriptionElement.contentEditable = false;
+            
+            // Create action buttons container
+            const actionsContainer = document.createElement('div');
+            actionsContainer.className = 'flex justify-between mt-3';
+            
+            // Edit button
+            const editButton = document.createElement('button');
+            editButton.className = 'text-indigo-600 hover:text-indigo-800 text-xs font-medium p-1 rounded';
+            editButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793 2.828a2 2 0 11-2.828-2.828l.793-2.828zm0 10a2 2 0 112.828 2.828l-.793 2.828a2 2 0 11-2.828-2.828l.793-2.828zm0 10a2 2 0 112.828 2.828l-.793 2.828a2 2 0 11-2.828-2.828l.793-2.828z"></path></svg>';
+            editButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                startEditing(card);
+            });
+            
+            // Delete button
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'text-red-600 hover:text-red-800 text-xs font-medium p-1 rounded';
+            deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>';
+            deleteButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                confirmDelete(card);
+            });
+            
+            // Append buttons to actions container
+            actionsContainer.appendChild(editButton);
+            actionsContainer.appendChild(deleteButton);
+            
+            // Assemble the card
+            card.appendChild(titleElement);
+            card.appendChild(descriptionElement);
+            card.appendChild(actionsContainer);
+            
+            // Add to container if provided, otherwise find the correct column
+            if (container) {
+                container.appendChild(card);
+            } else {
+                const column = document.getElementById(cardData.column || 'backlog');
+                if (column) {
+                    column.appendChild(card);
+                }
+            }
+            
+            // Save state after creating a card
+            saveBoardState();
+        }
+
+        /**
+         * Handle drag start event - set data to transfer
+         * @param {DragEvent} e - The drag event
+         */
+        function handleDragStart(e) {
+            // Store the card ID in the drag data
+            e.dataTransfer.setData('text/plain', e.target.getAttribute('data-id'));
+            
+            // Add CSS class to indicate dragging
+            setTimeout(() => {
+                e.target.classList.add('dragging');
+            }, 0);
+            
+            // Store reference to the card for later use
+            e.dataTransfer.cardElement = e.target;
+        }
+
+        /**
+         * Allow drop on column areas
+         * @param {DragEvent} e - The drag event
+         */
+        function allowDrop(e) {
+            e.preventDefault(); // Allow drop by default
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        /**
+         * Handle drop event - move card to new column
+         * @param {DragEvent} e - The drag event
+         */
+        function drop(e) {
+            e.preventDefault();
+            
+            // Get the card ID from data
+            const cardId = e.dataTransfer.getData('text/plain');
+            if (!cardId) return;
+            
+            // Find the card element
+            const card = document.querySelector(`[data-id="${cardId}"]`);
+            if (!card) return;
+            
+            // Remove dragging class
+            card.classList.remove('dragging');
+            
+            // Get the target column (the drop zone)
+            const targetColumn = e.target.closest('.flex.flex-col');
+            if (!targetColumn) return;
+            
+            // Get the column ID from the target's id attribute
+            const targetColumnId = targetColumn.id;
+            
+            // If card is already in the same column, do nothing
+            const currentColumn = card.parentElement.id;
+            if (currentColumn === targetColumnId) {
+                return;
+            }
+            
+            // Move the card to the new column
+            targetColumn.appendChild(card);
+            
+            // If moving to Done column, trigger confetti animation
+            if (targetColumnId === 'done') {
+                createConfetti();
+            }
+            
+            // Save the updated board state
+            saveBoardState();
+        }
+
+        /**
+         * Handle double-click on a card to edit its title and description
+         * @param {Event} e - The double-click event
+         */
+        function handleCardDoubleClick(e) {
+            // Only trigger on direct card click, not on buttons
+            if (e.target.tagName === 'BUTTON') return;
+            
+            // Find the card container
+            const card = e.target.closest('.card');
+            if (!card) return;
+            
+            // Start editing
+            startEditing(card);
+        }
+
+        /**
+         * Start editing a card's title and description
+         * @param {HTMLElement} card - The card element to edit
+         */
+        function startEditing(card) {
+            const titleElement = card.querySelector('h3');
+            const descriptionElement = card.querySelector('p');
+            
+            // Store original values
+            const originalTitle = titleElement.textContent;
+            const originalDescription = descriptionElement.textContent;
+            
+            // Make elements editable
+            titleElement.contentEditable = true;
+            descriptionElement.contentEditable = true;
+            
+            // Set focus to title
+            titleElement.focus();
+            
+            // Store original values for canceling edits
+            card.dataset.originalTitle = originalTitle;
+            card.dataset.originalDescription = originalDescription;
+            
+            // Add a visual indicator that we're in edit mode
+            titleElement.classList.add('bg-indigo-100', 'p-1');
+            descriptionElement.classList.add('bg-blue-50', 'p-1');
+            
+            // Add event listeners for saving or canceling edits
+            const saveEdit = () => {
+                titleElement.contentEditable = false;
+                descriptionElement.contentEditable = false;
+                
+                // Remove visual indicators
+                titleElement.classList.remove('bg-indigo-100', 'p-1');
+                descriptionElement.classList.remove('bg-blue-50', 'p-1');
+                
+                // Update card data in storage if changes were made
+                const newTitle = titleElement.textContent.trim() || 'Untitled Task';
+                const newDescription = descriptionElement.textContent.trim() || 'No description provided.';
+                
+                if (newTitle !== originalTitle || newDescription !== originalDescription) {
+                    updateCardData(card.dataset.id, { title: newTitle, description: newDescription });
+                }
+            };
+            
+            // Add event listeners for Enter and Escape keys
+            const handleKeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    titleElement.contentEditable = false;
+                    descriptionElement.contentEditable = false;
+                    
+                    // Restore original values if escape is pressed
+                    titleElement.textContent = originalTitle;
+                    descriptionElement.textContent = originalDescription;
+                    
+                    // Remove visual indicators
+                    titleElement.classList.remove('bg-indigo-100', 'p-1');
+                    descriptionElement.classList.remove('bg-blue-50', 'p-1');
+                }
+            };
+            
+            titleElement.addEventListener('blur', saveEdit);
+            descriptionElement.addEventListener('blur', saveEdit);
+            titleElement.addEventListener('keydown', handleKeydown);
+            descriptionElement.addEventListener('keydown', handleKeydown);
+            
+            // Also listen for focusout to save changes
+            card.addEventListener('focusout', function() {
+                // Delay saving slightly to allow for proper focus change
+                setTimeout(saveEdit, 100);
+            });
+        }
+
+        /**
+         * Confirm card deletion with a custom modal
+         * @param {HTMLElement} card - The card to delete
+         */
+        function confirmDelete(card) {
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            
+            // Create modal
+            const modal = document.createElement('div');
+            modal.className = 'bg-white rounded-lg p-6 w-96 shadow-xl max-w-full mx-4';
+            
+            // Modal content
+            const title = document.createElement('h2');
+            title.className = 'text-xl font-bold text-gray-800 mb-4';
+            title.textContent = 'Delete Card?';
+            
+            const message = document.createElement('p');
+            message.className = 'text-gray-700 mb-6';
+            message.textContent = 'Are you sure you want to delete this card? This action cannot be undone.';
+            
+            const buttons = document.createElement('div');
+            buttons.className = 'flex justify-end space-x-3';
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.addEventListener('click', () => {
+                document.body.removeChild(overlay);
+            });
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.addEventListener('click', () => {
+                card.remove();
+                saveBoardState();
+                document.body.removeChild(overlay);
+            });
+            
+            // Assemble modal
+            buttons.appendChild(cancelBtn);
+            buttons.appendChild(deleteBtn);
+            modal.appendChild(title);
+            modal.appendChild(message);
+            modal.appendChild(buttons);
+            overlay.appendChild(modal);
+            
+            // Add to document
+            document.body.appendChild(overlay);
+            
+            // Focus on cancel button for accessibility
+            cancelBtn.focus();
+        }
+
+        /**
+         * Add a new card to the specified column
+         * @param {string} columnId - The ID of the column to add the card to
+         */
+        function addCard(columnId) {
+            // Generate unique ID for new card
+            const id = 'card-' + Date.now();
+            
+            // Create default card data
+            const newCardData = {
+                id: id,
+                title: 'New Task',
+                description: '',
+                column: columnId
+            };
+            
+            // Create the card element and add it to the specified column
+            createCardElement(newCardData);
+        }
+
+        /**
+         * Update card data in storage
+         * @param {string} id - The ID of the card to update
+         * @param {Object} updates - The properties to update
+         */
+        function updateCardData(id, updates) {
+            const boardState = getBoardState();
+            
+            // Find the card in all columns
+            for (const columnId in boardState) {
+                const index = boardState[columnId].findIndex(card => card.id === id);
+                if (index !== -1) {
+                    // Update the card with new data
+                    boardState[columnId][index] = { ...boardState[columnId][index], ...updates };
+                    saveBoardState();
+                    break;
+                }
+            }
+        }
+
+        /**
+         * Get the current board state from localStorage
+         * @returns {Object} The current board state
+         */
+        function getBoardState() {
+            const savedState = localStorage.getItem(KANBAN_NAMESPACE);
+            
+            if (savedState) {
+                return JSON.parse(savedState);
+            }
+            
+            // Return default structure if no data exists
+            return {
+                backlog: [],
+                'in-progress': [],
+                review: [],
+                done: []
+            };
+        }
+
+        /**
+         * Save the current board state to localStorage
+         */
+        function saveBoardState() {
+            const columns = ['backlog', 'in-progress', 'review', 'done'];
+            const boardState = {};
+            
+            // For each column, collect all card data
+            columns.forEach(columnId => {
+                const column = document.getElementById(columnId);
+                boardState[columnId] = Array.from(column.querySelectorAll('.card')).map(card => ({
+                    id: card.getAttribute('data-id'),
+                    title: card.querySelector('h3').textContent,
+                    description: card.querySelector('p').textContent
+                }));
+            });
+            
+            // Save to localStorage with our namespace
+            localStorage.setItem(KANBAN_NAMESPACE, JSON.stringify(boardState));
+        }
+
+        /**
+         * Create confetti animation when card moves to Done column
+         */
+        function createConfetti() {
+            // Create a burst of confetti pieces
+            const count = 100;
+            const defaults = {
+                origin: { y: 0.7 }
+            };
+            
+            // Create multiple bursts for visual effect
+            function fire() {
+                confetti({
+                    ...defaults,
+                    particleCount: count / 4,
+                    spread: 70,
+                    origin: { y: 0.7 }
+                });
+            }
+            
+            // Create multiple bursts with slight delays
+            setTimeout(fire, 250);
+            setTimeout(fire, 300);
+            setTimeout(fire, 400);
+            
+            // Create a burst from the center
+            confetti({
+                ...defaults,
+                particleCount: count / 2,
+                spread: 100
+            });
+            
+            // Create one more burst for extra effect
+            setTimeout(() => {
+                confetti({
+                    ...defaults,
+                    particleCount: count / 3,
+                    spread: 80
+                });
+            }, 600);
+        }
+    </script>
+</body>
+</html>
+```

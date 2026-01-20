@@ -1,0 +1,708 @@
+1.  **Analyze the Request:**
+    *   **Goal:** Create a fully functional Kanban board.
+    *   **Format:** Single HTML file (HTML + CSS + JS).
+    *   **Tech Stack:** Vanilla JavaScript, Tailwind CSS (via CDN).
+    *   **Columns:** Backlog, In Progress, Review, Done.
+    *   **Card Features:**
+        *   Draggable (Drag and Drop API).
+        *   Editable in place (contenteditable or modal replacement).
+        *   Persisted in `localStorage`.
+        *   Deletable (with custom confirmation, no `window.confirm`).
+    *   **Column Features:** "Add card" action.
+    *   **Visuals:** Modern, vibrant, subtle CSS transitions, confetti animation on "Done".
+    *   **Data Handling:** Dummy data if empty.
+    *   **Constraint:** No `window.alert` or `window.prompt`.
+
+2.  **Architecture & State Management:**
+    *   I need a central state object or array representing the columns and their cards.
+    *   Structure:
+        ```json
+        [
+          { id: "col-1", title: "Backlog", cards: [{ id: "card-1", content: "Task 1" }] },
+          ...
+        ]
+        ```
+    *   *Correction:* A flat list with column IDs is often easier to manage for DnD, but nested objects are fine too. Let's stick to a structure where each column has an array of cards.
+    *   *Persistence:* `saveState()` and `loadState()` functions using `localStorage`.
+
+3.  **UI/UX Design (Tailwind):**
+    *   **Layout:** A horizontal flex container for columns, vertical flex for cards within columns.
+    *   **Colors:** A vibrant palette.
+        *   Backlog: Gray/Slate.
+        *   In Progress: Blue/Cyan.
+        *   Review: Purple/Violet.
+        *   Done: Green/Teal.
+    *   **Interactions:** Hover effects, dragging states (visual feedback), transitions.
+    *   **Modals/Overlays:** Since no `prompt` or `alert`, I need a custom Modal component for:
+        1.  Adding a card.
+        2.  Editing a card.
+        3.  Deleting a card (confirmation).
+
+4.  **Drag and Drop Logic:**
+    *   Use the native HTML5 Drag and Drop API (`draggable="true"`, `dragstart`, `dragover`, `drop`, `dragenter`, `dragleave`).
+    *   *Drag Start:* Store the ID of the dragged card.
+    *   *Drag Over:* Allow dropping (prevent default). Maybe highlight the drop target column.
+    *   *Drop:* Identify the target column and the card being moved. Update the state and re-render.
+
+5.  **Confetti Animation:**
+    *   Since I can't import a heavy library easily without CDN (and the user asked for a single file, though CDN is allowed for Tailwind), I will write a simple lightweight Canvas-based confetti script or use a simple CSS particle approach. A lightweight JS function drawing to a canvas overlay is best for performance and "vibrancy".
+
+6.  **Step-by-Step Implementation Plan:**
+
+    *   **Step 1: HTML Structure:**
+        *   Header.
+        *   Main Board Area (Grid/Flex).
+        *   Modals (hidden by default).
+        *   Canvas for confetti.
+
+    *   **Step 2: CSS (Tailwind + Custom):**
+        *   Import Tailwind.
+        *   Custom styles for drag-and-drop visual cues (ghost image vs. placeholder).
+        *   Transitions for card appearance.
+
+    *   **Step 3: JavaScript - State:**
+        *   Initial dummy data.
+        *   `loadState` / `saveState`.
+
+    *   **Step 4: JavaScript - Rendering:**
+        *   `renderBoard()` function that clears columns and rebuilds DOM based on state.
+        *   *Optimization:* Ideally, we shouldn't re-render the whole board on every drag event. However, for a simple vanilla JS app, re-rendering the specific column or just moving DOM elements is better.
+        *   *Better approach:* The `renderBoard` function sets up the initial state. For DnD, we manipulate the DOM directly and update the state on drop. This avoids flickering.
+
+    *   **Step 5: JavaScript - Logic:**
+        *   **Drag & Drop:** Event listeners on cards and columns.
+        *   **Add Card:** Open Modal -> Submit -> Update State -> Save -> Render.
+        *   **Edit Card:** Double click or specific button -> Open Modal -> Save -> Update State -> Save -> Render.
+        *   **Delete Card:** Button -> Open Confirmation Modal -> Confirm -> Update State -> Save -> Render.
+        *   **Confetti:** Trigger on drop to "Done".
+
+7.  **Refining the Details:**
+
+    *   *No Alerts:* Create a `div` with `fixed inset-0 z-50` for the modal system.
+    *   *Icons:* Use SVG strings inline (Lucide or Heroicons style) to avoid external font dependencies.
+    *   *Validation:* Don't allow empty card titles.
+
+8.  **Drafting the Code (Mental or Scratchpad):**
+
+    *   *HTML:*
+        ```html
+        <div id="app" class="h-screen flex flex-col bg-gray-100">
+           <!-- Header -->
+           <!-- Board -->
+           <!-- Modals -->
+        </div>
+        ```
+    *   *JS State:*
+        ```javascript
+        const defaultData = [
+            { id: 'col-1', title: 'Backlog', color: 'bg-slate-200', cards: [...] },
+            ...
+        ];
+        ```
+
+    *   *Confetti:* A simple class-based particle system on a canvas.
+
+9.  **Addressing Specific Requirements:**
+    *   *Draggable:* HTML5 DnD.
+    *   *Editable in place:* I'll use a modal for editing to keep the UI clean, or `contenteditable`. The prompt says "editable in place", which often implies double-click to edit. I'll implement a "Edit" button that opens a modal, as `contenteditable` can be messy with persistence and styling. *Self-correction:* The prompt specifically says "editable in place". I will try to use a `contenteditable` span for a smoother experience, or a promptless modal. Let's go with a Modal for consistency and robustness, but I will make it feel "in place" by having the modal populate the existing text. Actually, `contenteditable` is cooler. Let's try `contenteditable` on the card text. If the user clicks away, save it. If the user edits and saves, update state. *Decision:* To ensure robustness and no `window.prompt`, I will use a custom Modal for editing. It's cleaner for state management.
+
+    *   *Persisted:* `localStorage.setItem('kanban-app-data', ...)`
+
+10. **Writing the actual code (incorporating into the final response):**
+
+    *   *Tailwind Config:* Use standard CDN.
+    *   *Icons:* SVGs.
+    *   *Confetti:* A simple `Confetti` class.
+
+    *   *Drag & Drop Logic:*
+        *   `dragstart`: add `dragging` class to card.
+        *   `dragover`: `e.preventDefault()` to allow drop.
+        *   `drop`: get dragged ID, get target column ID. Move card in array. Re-render.
+
+    *   *Modal Logic:*
+        *   `openModal(type, data)`
+        *   `closeModal()`
+        *   `handleFormSubmit()`
+
+11. **Final Polish:**
+    *   Check accessibility (aria labels where possible).
+    *   Ensure colors are vibrant (Indigo, Emerald, Amber, Rose).
+    *   Add transitions (`transition-all duration-200`).
+    *   Ensure dummy data is created if `localStorage` is empty.
+
+12. **Code Assembly:** Combine into the single HTML structure requested. (Self-correction during assembly: Ensure the Canvas for confetti is on top of everything but doesn't block clicks).
+
+**(Self-Correction during coding the Drag and Drop):**
+Native HTML5 DnD can be finicky. I need to make sure the `dragover` event is handled correctly on the *column* container, not the individual cards (unless reordering within the same column).
+*Strategy:*
+*   Cards: `draggable="true"`.
+*   Columns: `dragover` allows drop.
+*   On Drop: Find the closest column. Move the card element to the end of that column's list (or re-insert based on position). For simplicity in a single file, appending to the column is usually acceptable, but inserting *before* the element below the cursor is better.
+*   *Simplification:* I will append to the column on drop. It's robust and less buggy for a quick prototype.
+
+**(Confetti):**
+I'll implement a lightweight canvas confetti effect that triggers when a card is dropped into the "Done" column.
+
+**(Dummy Data):**
+I'll create a function `initData()` that checks localStorage. If empty, push the dummy cards.
+
+Let's generate the code.</think>Here is the complete, single-file HTML solution. It includes the Tailwind CDN, custom CSS for animations, the vanilla JavaScript logic for state management and drag-and-drop, and a lightweight canvas-based confetti engine.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibrant Kanban Board</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Config for Tailwind to add specific colors/fonts if needed -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                        }
+                    },
+                    animation: {
+                        'bounce-short': 'bounce 0.5s ease-in-out 1',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Styles & Transitions */
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f3f4f6;
+            overflow-x: hidden; /* Prevent horizontal scroll during drag */
+        }
+
+        /* Drag and Drop Visuals */
+        .draggable-source {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .drag-over {
+            background-color: #e5e7eb; /* gray-200 */
+            border: 2px dashed #9ca3af; /* gray-400 */
+        }
+
+        /* Card Styling */
+        .kanban-card {
+            cursor: grab;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .kanban-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .kanban-card:active {
+            cursor: grabbing;
+        }
+
+        /* Modal Transitions */
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        .modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal:not(.hidden) {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm z-10">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-lg shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-slate-900">
+                TaskFlow
+            </h1>
+        </div>
+        <div class="text-sm text-gray-500">
+            Drag cards to move them. Double-click to edit.
+        </div>
+    </header>
+
+    <!-- Main Board Area -->
+    <main class="flex-1 overflow-x-auto p-6">
+        <div class="flex h-full gap-6 min-w-max">
+            
+            <!-- Column 1: Backlog -->
+            <section class="w-80 flex flex-col bg-gray-100 rounded-xl shadow-inner border border-gray-200/50">
+                <header class="p-4 border-b border-gray-200/50 flex justify-between items-center bg-white/50 backdrop-blur-sm rounded-t-xl sticky top-0">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-slate-400"></span> Backlog
+                    </h2>
+                    <span class="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full" id="count-backlog">0</span>
+                </header>
+                <div class="p-3 flex-1 overflow-y-auto space-y-3 kanban-column" id="col-backlog" data-col="backlog">
+                    <!-- Cards injected here -->
+                </div>
+                <footer class="p-3 border-t border-gray-200/50 bg-white/30 rounded-b-xl">
+                    <button onclick="openAddCardModal('backlog')" class="w-full py-2 px-3 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-sm font-medium flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Card
+                    </button>
+                </footer>
+            </section>
+
+            <!-- Column 2: In Progress -->
+            <section class="w-80 flex flex-col bg-gray-100 rounded-xl shadow-inner border border-gray-200/50">
+                <header class="p-4 border-b border-gray-200/50 flex justify-between items-center bg-white/50 backdrop-blur-sm rounded-t-xl sticky top-0">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-blue-500"></span> In Progress
+                    </h2>
+                    <span class="text-xs font-bold bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full" id="count-inprogress">0</span>
+                </header>
+                <div class="p-3 flex-1 overflow-y-auto space-y-3 kanban-column" id="col-inprogress" data-col="inprogress">
+                    <!-- Cards injected here -->
+                </div>
+                <footer class="p-3 border-t border-gray-200/50 bg-white/30 rounded-b-xl">
+                    <button onclick="openAddCardModal('inprogress')" class="w-full py-2 px-3 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-sm font-medium flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Card
+                    </button>
+                </footer>
+            </section>
+
+            <!-- Column 3: Review -->
+            <section class="w-80 flex flex-col bg-gray-100 rounded-xl shadow-inner border border-gray-200/50">
+                <header class="p-4 border-b border-gray-200/50 flex justify-between items-center bg-white/50 backdrop-blur-sm rounded-t-xl sticky top-0">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-purple-500"></span> Review
+                    </h2>
+                    <span class="text-xs font-bold bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full" id="count-review">0</span>
+                </header>
+                <div class="p-3 flex-1 overflow-y-auto space-y-3 kanban-column" id="col-review" data-col="review">
+                    <!-- Cards injected here -->
+                </div>
+                <footer class="p-3 border-t border-gray-200/50 bg-white/30 rounded-b-xl">
+                    <button onclick="openAddCardModal('review')" class="w-full py-2 px-3 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-sm font-medium flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Card
+                    </button>
+                </footer>
+            </section>
+
+            <!-- Column 4: Done -->
+            <section class="w-80 flex flex-col bg-gray-100 rounded-xl shadow-inner border border-gray-200/50">
+                <header class="p-4 border-b border-gray-200/50 flex justify-between items-center bg-white/50 backdrop-blur-sm rounded-t-xl sticky top-0">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span> Done
+                    </h2>
+                    <span class="text-xs font-bold bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full" id="count-done">0</span>
+                </header>
+                <div class="p-3 flex-1 overflow-y-auto space-y-3 kanban-column" id="col-done" data-col="done">
+                    <!-- Cards injected here -->
+                </div>
+                <footer class="p-3 border-t border-gray-200/50 bg-white/30 rounded-b-xl">
+                    <button onclick="openAddCardModal('done')" class="w-full py-2 px-3 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-sm font-medium flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Card
+                    </button>
+                </footer>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-50"></canvas>
+
+    <!-- Generic Modal Container -->
+    <div id="modal-backdrop" class="modal hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+        
+        <!-- Add/Edit Card Form -->
+        <div id="form-modal" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
+            <h3 id="modal-title" class="text-xl font-bold text-slate-800 mb-4">New Task</h3>
+            <textarea id="task-input" rows="4" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none text-slate-700" placeholder="What needs to be done?"></textarea>
+            <div id="error-msg" class="text-red-500 text-sm mt-2 hidden">Please enter a task description.</div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors font-medium">Cancel</button>
+                <button onclick="handleFormSubmit()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-colors font-medium flex items-center gap-2">
+                    <span id="submit-btn-text">Save Task</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation -->
+        <div id="delete-modal" class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 hidden">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 mb-2">Delete this card?</h3>
+                <p class="text-sm text-slate-500 mb-6">This action cannot be undone.</p>
+                <div class="flex justify-center gap-3">
+                    <button onclick="closeModal()" class="px-4 py-2 border border-gray-300 text-slate-700 hover:bg-gray-50 rounded-lg transition-colors font-medium">Cancel</button>
+                    <button onclick="confirmDelete()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md transition-colors font-medium">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // --- State Management ---
+        const STORAGE_KEY = 'vibrant_kanban_data_v1';
+        let tasks = [];
+        let currentModalMode = 'add'; // 'add' or 'edit'
+        let currentTargetColumn = '';
+        let currentEditId = null;
+        let deleteTargetId = null;
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTasks();
+            renderBoard();
+            setupDragAndDrop();
+        });
+
+        function loadTasks() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                tasks = JSON.parse(stored);
+            } else {
+                // Initialize with dummy data if empty
+                tasks = [
+                    { id: 't1', col: 'backlog', content: 'Research new design trends' },
+                    { id: 't2', col: 'inprogress', content: 'Setup project repository' },
+                    { id: 't3', col: 'review', content: 'Review pull request #42' },
+                    { id: 't4', col: 'done', content: 'Initial project setup' },
+                    { id: 't5', col: 'backlog', content: 'Write documentation' }
+                ];
+                saveTasks();
+            }
+        }
+
+        function saveTasks() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            updateCounts();
+        }
+
+        // --- Rendering ---
+        function renderBoard() {
+            // Clear all columns
+            ['backlog', 'inprogress', 'review', 'done'].forEach(colId => {
+                const colEl = document.getElementById(`col-${colId}`);
+                colEl.innerHTML = '';
+            });
+
+            // Populate columns
+            tasks.forEach(task => {
+                const card = createCardElement(task);
+                document.getElementById(`col-${task.col}`).appendChild(card);
+            });
+
+            updateCounts();
+        }
+
+        function createCardElement(task) {
+            const div = document.createElement('div');
+            div.className = 'kanban-card bg-white p-4 rounded-lg border border-gray-200 select-none group';
+            div.draggable = true;
+            div.dataset.id = task.id;
+
+            // Inner HTML
+            div.innerHTML = `
+                <p class="text-slate-700 text-sm leading-relaxed break-words">${escapeHtml(task.content)}</p>
+                <div class="mt-3 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="openEditModal('${task.id}')" class="text-xs text-indigo-500 hover:text-indigo-700 font-medium">Edit</button>
+                    <button onclick="openDeleteModal('${task.id}')" class="text-xs text-red-400 hover:text-red-600 font-medium">Delete</button>
+                </div>
+            `;
+
+            // Double-click to edit
+            div.addEventListener('dblclick', () => openEditModal(task.id));
+
+            return div;
+        }
+
+        function updateCounts() {
+            const counts = {
+                backlog: tasks.filter(t => t.col === 'backlog').length,
+                inprogress: tasks.filter(t => t.col === 'inprogress').length,
+                review: tasks.filter(t => t.col === 'review').length,
+                done: tasks.filter(t => t.col === 'done').length
+            };
+
+            for (const [key, value] of Object.entries(counts)) {
+                document.getElementById(`count-${key}`).textContent = value;
+            }
+        }
+
+        // --- Drag and Drop Logic ---
+        let draggedItem = null;
+
+        function setupDragAndDrop() {
+            const columns = document.querySelectorAll('.kanban-column');
+            
+            columns.forEach(col => {
+                // Add drop event to column
+                col.addEventListener('dragover', (e) => {
+                    e.preventDefault(); // Allow dropping
+                    col.classList.add('bg-indigo-50/50');
+                });
+
+                col.addEventListener('dragleave', () => {
+                    col.classList.remove('bg-indigo-50/50');
+                });
+
+                col.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    col.classList.remove('bg-indigo-50/50');
+                    
+                    if (draggedItem) {
+                        const newColId = col.dataset.col;
+                        const taskId = draggedItem.dataset.id;
+                        
+                        // Update State
+                        const taskIndex = tasks.findIndex(t => t.id === taskId);
+                        if (taskIndex > -1) {
+                            const oldCol = tasks[taskIndex].col;
+                            tasks[taskIndex].col = newColId;
+                            
+                            // If moved to Done, trigger confetti
+                            if (oldCol !== 'done' && newColId === 'done') {
+                                fireConfetti();
+                            }
+
+                            saveTasks();
+                            renderBoard();
+                        }
+                        draggedItem = null;
+                    }
+                });
+            });
+
+            // Add drag events to cards
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('kanban-card')) {
+                    draggedItem = e.target;
+                    e.target.style.opacity = '0.5';
+                }
+            });
+
+            document.addEventListener('dragend', (e) => {
+                if (e.target.classList.contains('kanban-card')) {
+                    e.target.style.opacity = '1';
+                    document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('bg-indigo-50/50'));
+                }
+            });
+        }
+
+        // --- Modal & Form Logic ---
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const formModal = document.getElementById('form-modal');
+        const deleteModal = document.getElementById('delete-modal');
+        const taskInput = document.getElementById('task-input');
+        const errorMsg = document.getElementById('error-msg');
+
+        function openAddCardModal(colId) {
+            currentModalMode = 'add';
+            currentTargetColumn = colId;
+            currentEditId = null;
+            
+            document.getElementById('modal-title').textContent = 'New Task';
+            document.getElementById('submit-btn-text').textContent = 'Add Task';
+            taskInput.value = '';
+            errorMsg.classList.add('hidden');
+            
+            showModals();
+        }
+
+        function openEditModal(taskId) {
+            currentModalMode = 'edit';
+            currentEditId = taskId;
+            const task = tasks.find(t => t.id === taskId);
+            
+            if (!task) return;
+
+            document.getElementById('modal-title').textContent = 'Edit Task';
+            document.getElementById('submit-btn-text').textContent = 'Save Changes';
+            taskInput.value = task.content;
+            errorMsg.classList.add('hidden');
+            
+            showModals();
+        }
+
+        function openDeleteModal(taskId) {
+            deleteTargetId = taskId;
+            hideModals(); // Hide form modal first
+            deleteModal.classList.remove('hidden');
+            modalBackdrop.classList.remove('hidden');
+        }
+
+        function showModals() {
+            hideModals();
+            formModal.classList.remove('hidden');
+            modalBackdrop.classList.remove('hidden');
+            setTimeout(() => taskInput.focus(), 100);
+        }
+
+        function hideModals() {
+            modalBackdrop.classList.add('hidden');
+            formModal.classList.add('hidden');
+            deleteModal.classList.add('hidden');
+        }
+
+        function closeModal() {
+            hideModals();
+            deleteTargetId = null;
+            currentEditId = null;
+        }
+
+        function handleFormSubmit() {
+            const content = taskInput.value.trim();
+            if (!content) {
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            if (currentModalMode === 'add') {
+                const newTask = {
+                    id: 't' + Date.now(),
+                    col: currentTargetColumn,
+                    content: content
+                };
+                tasks.push(newTask);
+            } else if (currentModalMode === 'edit') {
+                const taskIndex = tasks.findIndex(t => t.id === currentEditId);
+                if (taskIndex > -1) {
+                    tasks[taskIndex].content = content;
+                }
+            }
+
+            saveTasks();
+            renderBoard();
+            closeModal();
+        }
+
+        function confirmDelete() {
+            if (deleteTargetId) {
+                tasks = tasks.filter(t => t.id !== deleteTargetId);
+                saveTasks();
+                renderBoard();
+                closeModal();
+            }
+        }
+
+        // --- Utility ---
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // --- Confetti Effect (Simple Canvas Implementation) ---
+        const canvas = document.getElementById('confetti-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function fireConfetti() {
+            const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: window.innerWidth / 2,
+                    y: window.innerHeight / 2,
+                    vx: (Math.random() - 0.5) * 20,
+                    vy: (Math.random() - 1) * 20 - 5,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 100
+                });
+            }
+            if (particles.length <= 150) {
+                requestAnimationFrame(updateConfetti);
+            }
+        }
+
+        function updateConfetti() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.5; // gravity
+                p.life--;
+                
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            }
+            
+            particles = particles.filter(p => p.life > 0);
+            
+            if (particles.length > 0) {
+                requestAnimationFrame(updateConfetti);
+            }
+        }
+    </script>
+</body>
+</html>
+```

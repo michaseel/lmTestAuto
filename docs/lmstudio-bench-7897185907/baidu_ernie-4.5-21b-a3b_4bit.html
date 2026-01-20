@@ -1,0 +1,550 @@
+<html lang="en">
+<head>
+    <!-- Tailwind CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Kanban Board</title>
+    <style>
+        /* Confetti animation */
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(-100vh) rotate(360deg); }
+        }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 20px;
+            background-color: #ff3366;
+            animation: confetti 1s linear infinite;
+        }
+
+        /* Subtle transitions */
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+
+        /* Custom styling for the Kanban board */
+        .kanban-board {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .kanban-column {
+            background-color: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 50vh;
+        }
+
+        .kanban-column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: move;
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-title {
+            font-weight: 500;
+            color: #334155;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .card-action {
+            background: none;
+            border: none;
+            color: #6366f1;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .card-action:hover {
+            text-decoration: underline;
+        }
+
+        .dragging {
+            opacity: 0.5;
+            background-color: #e2e8f0;
+        }
+
+        /* Confirmation dialog styles */
+        .confirm-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .confirm-content {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            width: 300px;
+        }
+
+        .confirm-text {
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .confirm-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+
+        .confirm-yes {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .confirm-no {
+            background-color: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Kanban board container -->
+    <div class="kanban-board">
+        <!-- Header section -->
+        <header class="text-center py-6 bg-gradient-to-r from-purple-50 to-indigo-100">
+            <h1 class="text-3xl font-bold text-purple-800">Kanban Board</h1>
+            <p class="text-gray-600 mt-2">Organize your tasks efficiently</p>
+        </header>
+
+        <!-- Kanban board columns -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Backlog column -->
+            <div class="kanban-column">
+                <div class="kanban-column-header">
+                    <h2 class="text-lg font-semibold text-gray-800">Backlog</h2>
+                    <button id="addCardBtn-backlog" class="card-action text-blue-500 hover:text-blue-700">
+                        + Add Card
+                    </button>
+                </div>
+                <div id="backlog-column" class="space-y-2"></div>
+            </div>
+
+            <!-- In Progress column -->
+            <div class="kanban-column">
+                <div class="kanban-column-header">
+                    <h2 class="text-lg font-semibold text-gray-800">In Progress</h2>
+                    <button id="addCardBtn-progress" class="card-action text-blue-500 hover:text-blue-700">
+                        + Add Card
+                    </button>
+                </div>
+                <div id="progress-column" class="space-y-2"></div>
+            </div>
+
+            <!-- Review column -->
+            <div class="kanban-column">
+                <div class="kanban-column-header">
+                    <h2 class="text-lg font-semibold text-gray-800">Review</h2>
+                    <button id="addCardBtn-review" class="card-action text-blue-500 hover:text-blue-700">
+                        + Add Card
+                    </button>
+                </div>
+                <div id="review-column" class="space-y-2"></div>
+            </div>
+
+            <!-- Done column -->
+            <div class="kanban-column">
+                <div class="kanban-column-header">
+                    <h2 class="text-lg font-semibold text-gray-800">Done</h2>
+                    <button id="addCardBtn-done" class="card-action text-green-500 hover:text-green-700">
+                        + Add Card
+                    </button>
+                </div>
+                <div id="done-column" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation dialog -->
+    <div id="confirmDialog" class="confirm-dialog hidden">
+        <div class="confirm-content">
+            <p id="confirmText" class="confirm-text"></p>
+            <div class="confirm-buttons">
+                <button id="confirmNo" class="confirm-button confirm-no">No</button>
+                <button id="confirmYes" class="confirm-button confirm-yes">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // === Kanban Board State Management ===
+        // ============================================
+        const KANBAN_NAMESPACE = 'my-kanban';
+        
+        // Initialize state with some dummy cards if none exist
+        function initializeState() {
+            const saved = localStorage.getItem(KANBAN_NAMESPACE);
+            let state;
+            
+            if (saved) {
+                state = JSON.parse(saved);
+            } else {
+                // Create dummy cards if no state exists
+                state = {
+                    backlog: [
+                        { id: 1, title: 'Set up project structure', description: '', status: 'backlog' },
+                        { id: 2, title: 'Define user stories', description: '', status: 'backlog' },
+                        { id: 3, title: 'Create first component', description: '', status: 'backlog' }
+                    ],
+                    progress: [],
+                    review: [],
+                    done: []
+                };
+            }
+            
+            return state;
+        }
+
+        // Save state to localStorage
+        function saveState(state) {
+            localStorage.setItem(KANBAN_NAMESPACE, JSON.stringify(state));
+        }
+
+        // ============================================
+        // === DOM Elements and Event Listeners ===
+        // ============================================
+        const state = initializeState();
+        saveState(state);
+
+        // Column DOM elements
+        const backlogColumn = document.getElementById('backlog-column');
+        const progressColumn = document.getElementById('progress-column');
+        const reviewColumn = document.getElementById('review-column');
+        const doneColumn = document.getElementById('done-column');
+
+        // Add card buttons
+        const addBacklogBtn = document.getElementById('addCardBtn-backlog');
+        const addProgressBtn = document.getElementById('addCardBtn-progress');
+        const addReviewBtn = document.getElementById('addCardBtn-review');
+        const addDoneBtn = document.getElementById('addCardBtn-done');
+
+        // Confirmation dialog elements
+        const confirmDialog = document.getElementById('confirmDialog');
+        const confirmTextEl = document.getElementById('confirmText');
+        const confirmNoBtn = document.getElementById('confirmNo');
+        const confirmYesBtn = document.getElementById('confirmYes');
+
+        // ============================================
+        // === Column Card Rendering ===
+        // ============================================
+        function renderColumn(columnId, cards) {
+            const columnEl = document.getElementById(`${columnId}-column`);
+            columnEl.innerHTML = '';
+            
+            cards.forEach(card => {
+                const cardElement = createCardElement(card);
+                columnEl.appendChild(cardElement);
+            });
+        }
+
+        // Create a card element with all necessary event handlers
+        function createCardElement(card) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card transition-all';
+            
+            // Add draggable class during drag operation
+            if (card.dragging) {
+                cardEl.classList.add('dragging');
+            }
+            
+            // Card title and description
+            const cardContent = `
+                <div class="card-header">
+                    <span class="text-sm font-medium text-gray-700">${card.title}</span>
+                    <div class="card-actions flex gap-2">
+                        <button class="card-action text-gray-500 hover:text-blue-500" data-action="edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="card-action text-gray-500 hover:text-red-500" data-action="delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                ${card.description ? `<p class="text-sm text-gray-600 mt-2">${card.description}</p>` : ''}
+            `;
+            
+            // Add content to card element
+            cardEl.innerHTML = cardContent;
+            
+            // Handle edit action
+            cardEl.querySelectorAll('.card-action[data-action="edit"]').forEach(btn => {
+                btn.addEventListener('click', () => editCard(cardEl, card));
+            });
+            
+            // Handle delete action with confirmation
+            cardEl.querySelectorAll('.card-action[data-action="delete"]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent dialog from closing
+                    confirmDelete(cardEl, card);
+                });
+            });
+            
+            return cardEl;
+        }
+
+        // ============================================
+        // === Card Operations (Add, Edit, Delete) ===
+        // ============================================
+        function addCard(columnId, title, description = '') {
+            const newId = Date.now();
+            const card = {
+                id: newId,
+                title: title,
+                description: description,
+                status: columnId
+            };
+            
+            state[columnId].push(card);
+            renderColumn(columnId, state[columnId]);
+            saveState(state);
+        }
+
+        function editCard(cardEl, card) {
+            const newTitle = prompt('Enter new title:', card.title);
+            if (newTitle) {
+                card.title = newTitle;
+                renderCard(cardEl, card);
+                saveState(state);
+            }
+        }
+
+        function confirmDelete(cardEl, card) {
+            confirmTextEl.textContent = `Are you sure you want to delete "${card.title}"?`;
+            confirmDialog.classList.remove('hidden');
+            document.body.addEventListener('click', () => confirmDialog.classList.add('hidden'));
+            
+            confirmYesBtn.addEventListener('click', () => {
+                removeCard(cardEl, card);
+                confirmDialog.classList.add('hidden');
+            });
+        }
+
+        function removeCard(cardEl, card) {
+            // Remove from state
+            state[card.status] = state[card.status].filter(c => c.id !== card.id);
+            
+            // Remove from DOM
+            cardEl.remove();
+            
+            // If card was in 'done' column, trigger confetti animation
+            if (card.status === 'done') {
+                triggerConfetti();
+            }
+            
+            saveState(state);
+        }
+
+        // ============================================
+        // === Drag and Drop Implementation ===
+        // ============================================
+        function setupDragAndDrop() {
+            // Make all columns draggable
+            document.querySelectorAll('.kanban-column').forEach(col => {
+                col.draggable = true;
+            });
+            
+            // Make cards draggable
+            document.querySelectorAll('.card').forEach(card => {
+                card.setAttribute('draggable', 'true');
+            });
+            
+            // Handle drag start for cards
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('card')) {
+                    const card = e.target;
+                    const columnId = card.closest('.kanban-column').id.replace('-column', '');
+                    const status = card.closest('.kanban-column').id;
+                    
+                    // Set dragging state for the card
+                    card.classList.add('dragging');
+                    
+                    // Store the card and its current status for later
+                    e.dataTransfer.setData('text/plain', JSON.stringify({
+                        id: card.getAttribute('data-id'),
+                        status: status,
+                        title: card.querySelector('.card-header .text-sm').textContent
+                    }));
+                }
+            });
+            
+            // Handle drag end for cards
+            document.addEventListener('dragend', (e) => {
+                if (e.target.classList.contains('card')) {
+                    const card = e.target;
+                    card.classList.remove('dragging');
+                }
+            });
+            
+            // Handle drag over for all columns except the one being dragged from
+            document.querySelectorAll('.kanban-column:not(.dragging-from)').forEach(col => {
+                col.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+            });
+            
+            // Handle drop for all columns except the one being dragged to
+            document.querySelectorAll('.kanban-column:not(.dragging-to)').forEach(col => {
+                col.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const cardData = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    const newStatus = col.id.replace('-column', '');
+                    
+                    // Remove from original column and add to new one
+                    state[cardData.status] = state[cardData.status].filter(c => c.id !== cardData.id);
+                    state[newStatus].push({
+                        ...cardData,
+                        id: cardData.id,
+                        title: cardData.title,
+                        description: ''
+                    });
+                    
+                    // Update column references in card data
+                    const updatedCard = {
+                        ...cardData,
+                        status: newStatus
+                    };
+                    
+                    // Find and update the card in DOM
+                    const cardEl = document.querySelector(`.card[data-id="${updatedCard.id}"]`);
+                    if (cardEl) {
+                        renderCard(cardEl, updatedCard);
+                    }
+                    
+                    // If card was in 'done' column, trigger confetti animation
+                    if (newStatus === 'done') {
+                        triggerConfetti();
+                    }
+                    
+                    saveState(state);
+                });
+            });
+        }
+
+        // ============================================
+        // === Helper Functions ===
+        // ============================================
+        function renderCard(cardEl, card) {
+            const cardContent = `
+                <div class="card-header">
+                    <span class="text-sm font-medium text-gray-700">${card.title}</span>
+                    <div class="card-actions flex gap-2">
+                        <button class="card-action text-gray-500 hover:text-blue-500" data-action="edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="card-action text-gray-500 hover:text-red-500" data-action="delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                ${card.description ? `<p class="text-sm text-gray-600 mt-2">${card.description}</p>` : ''}
+            `;
+            
+            cardEl.innerHTML = cardContent;
+            
+            // Add event listeners to new buttons
+            cardEl.querySelectorAll('.card-action[data-action="edit"]').forEach(btn => {
+                btn.addEventListener('click', () => editCard(cardEl, card));
+            });
+            
+            cardEl.querySelectorAll('.card-action[data-action="delete"]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent dialog from closing
+                    confirmDelete(cardEl, card);
+                });
+            });
+        }
+
+        function triggerConfetti() {
+            // Confetti animation implementation (simplified)
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.position = 'fixed';
+            confetti.style.left = `${Math.random() * window.innerWidth}px`;
+            confetti.style.top = `${-20}px`;
+            confetti.style.width = '10px';
+            confetti.style.height = `${Math.random() * 40 + 20}px`;
+            confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 50%)`;
+            document.body.appendChild(confetti);
+            
+            // Remove after animation completes
+            setTimeout(() => {
+                confetti.remove();
+            }, 2000);
+        }
+
+        // ============================================
+        // === Event Listeners Setup ===
+        // ============================================
+        // Add card button event listeners
+        addBacklogBtn.addEventListener('click', () => {
+            const title = prompt('Enter card title:');
+            if (title) addCard('backlog', title);
+        });
+        
+        addProgressBtn.addEventListener('click', () => {
+            const title = prompt('Enter card title:');
+            if (title) addCard('progress', title);
+        });
+        
+        addReviewBtn.addEventListener('click', () => {
+            const title = prompt('Enter card title:');
+            if (title) addCard('review', title);
+        });
+        
+        addDoneBtn.addEventListener('click', () => {
+            const title = prompt('Enter card title:');
+            if (title) addCard('done', title);
+        });
+        
+        // Set up drag and drop
+        setupDragAndDrop();
+
+        // Initial render of all columns
+        renderColumn('backlog', state.backlog);
+        renderColumn('progress', state.progress);
+        renderColumn('review', state.review);
+        renderColumn('done', state.done);
+    </script>
+
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</body>
+</html>

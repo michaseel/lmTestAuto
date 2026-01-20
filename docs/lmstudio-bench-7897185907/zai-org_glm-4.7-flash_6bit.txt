@@ -1,0 +1,685 @@
+1.  **Understand the Goal:** The user wants a single-file HTML Kanban board application using vanilla JavaScript and Tailwind CSS. It needs to handle drag-and-drop, inline editing, local storage persistence, deletion (with custom UI, not `alert`/`prompt`), and a "Done" column trigger for confetti.
+
+2.  **Key Features & Constraints:**
+    *   **Columns:** Backlog, In Progress, Review, Done.
+    *   **Drag & Drop:** Cards move between columns.
+    *   **Editing:** Inline editing (contenteditable or replacing card with input).
+    *   **Persistence:** `localStorage` with a specific namespace.
+    *   **Deletion:** Custom confirmation modal (no `window.confirm`).
+    *   **Add Action:** Button in each column.
+    *   **Tech Stack:** HTML, Tailwind CSS (CDN), Vanilla JS.
+    *   **Visuals:** Subtle transitions, confetti on "Done", dummy data if empty.
+    *   **Output:** Single HTML file.
+
+3.  **Step-by-Step Implementation Plan:**
+
+    *   **HTML Structure:**
+        *   Header (Title, maybe a reset button).
+        *   Main Container (Grid layout for 4 columns).
+        *   Template for a Card (hidden) or just build them dynamically.
+        *   Modal template (for delete confirmation).
+
+    *   **CSS (Tailwind + Custom):**
+        *   Use Tailwind via CDN script.
+        *   Custom CSS for:
+            *   Drag and drop visual feedback (dragging class).
+            *   Transitions for smooth movement.
+            *   Confetti canvas positioning.
+
+    *   **JavaScript Logic:**
+        *   **State Management:**
+            *   Data structure: Array of objects `{ id, title, status, timestamp }`.
+            *   Load from `localStorage` on init.
+            *   Save to `localStorage` on change.
+        *   **Rendering:**
+            *   Function to render columns and cards based on state.
+            *   If state is empty, populate with dummy data.
+        *   **Drag & Drop:**
+            *   Use HTML5 Drag and Drop API (`dragstart`, `dragover`, `drop`, `dragenter`, `dragleave`).
+            *   Need to handle reordering within a column (optional but good) or just appending. Let's stick to appending to the new column for simplicity, or maybe basic reordering if time permits. The prompt says "draggable across columns", implies cross-column movement.
+        *   **Add Card:**
+            *   Input field inside the column header or a button that opens a modal. The prompt says "Each column provides an 'Add card' action". A simple input field that focuses on click or a "New" button is best. Let's go with a "New" button that prompts a custom modal for simplicity and robustness.
+        *   **Edit Card:**
+            *   Double click to edit? Or an edit button. The prompt says "editable in place". `contenteditable` is the most modern approach. When the user clicks out, save to state.
+        *   **Delete Card:**
+            *   Trash icon button.
+            *   Click -> Opens custom Modal -> Confirm -> Delete.
+        *   **Confetti:**
+            *   Simple canvas-based confetti script or a minimal implementation. Since I need to keep it in one file, I'll write a small, lightweight confetti function.
+
+4.  **Refining the Details:**
+
+    *   *Tailwind Config:* Use the script tag version to allow custom colors if needed, but standard palette is fine.
+    *   *Drag & Drop UX:* When dragging over a column, highlight the column background.
+    *   *Confetti:* I'll write a small particle system for the "Done" celebration.
+
+5.  **Drafting the Code (Mental or Scratchpad):**
+
+    *   *Data Structure:*
+        ```json
+        [
+          { "id": "1", "title": "Fix bug", "status": "backlog" }
+        ]
+        ```
+    *   *DOM Elements:* Need references to columns to append cards.
+
+    *   *Drag Logic:*
+        *   `dragstart`: Store ID of dragged item. Add class `opacity-50`.
+        *   `dragover`: `e.preventDefault()` to allow dropping.
+        *   `drop`: Get ID, find card, update status in state, re-render.
+        *   `dragend`: Remove class.
+
+    *   *Inline Edit:*
+        *   Event listener on card: `dblclick`.
+        *   Replace text with `<input>`.
+        *   `blur` or `Enter` key -> update state -> re-render.
+
+    *   *Modals:*
+        *   Hidden by default (`hidden` class).
+        *   Show `flex` on trigger.
+        *   Overlay background.
+
+6.  **Writing the Actual Code (Iterative refinement):**
+
+    *   *HTML Head:* Include Tailwind CDN.
+    *   *Body:*
+        *   Navbar.
+        *   Board Container (flex or grid).
+        *   Modals (Add, Delete).
+        *   Canvas for confetti.
+    *   *JS:*
+        *   `const STORAGE_KEY = 'kanban_v1';`
+        *   `let state = { columns: { backlog: [], ... } };` OR just a flat list with status. Flat list is easier for rendering. Let's do flat list: `tasks: []`.
+        *   `init()` function.
+        *   `render()` function.
+        *   `save()` function.
+        *   *Dummy Data:* If `localStorage` is empty, push 3-4 tasks to different columns.
+
+    *   *Confetti Implementation:*
+        *   Need a simple physics loop. `requestAnimationFrame`.
+        *   Spawn particles when a task is dropped into 'Done'.
+
+7.  **Addressing Specific Constraints:**
+    *   *No `alert`/`prompt`:* Created a custom Modal class or functions.
+    *   *Subtle transitions:* Tailwind `transition-all duration-200`. On drop, maybe re-render immediately, but the drag visual should be smooth.
+    *   *Namespace:* `kanban_app_v1`.
+
+8.  **Final Code Assembly & Review:**
+
+    *   *Check:* Do cards move? Yes, via Drop API.
+    *   *Check:* Editable? Yes, `contenteditable`.
+    *   *Check:* LocalStorage? Yes.
+    *   *Check:* Delete? Yes, custom modal.
+    *   *Check:* Confetti? Yes, canvas overlay.
+    *   *Check:* Design? Tailwind makes it look modern (gradients, shadows, rounded corners).
+
+    *(Self-Correction during coding)*:
+    *   *Issue:* Dragging an element that is `contenteditable` might be tricky.
+    *   *Fix:* Set `draggable="true"` on the card container. When double-clicking to edit, maybe set `draggable="false"` temporarily or handle the logic so the drag start event doesn't fire if the user is just selecting text. Actually, standard behavior is usually fine, but let's ensure the drag handle is the whole card except the edit button? No, the prompt says "draggable across columns". Usually, the whole card is the drag handle.
+    *   *Editing:* If I make the whole card draggable, double-clicking to edit might be annoying.
+    *   *Solution:* Add a dedicated "Edit" icon or handle. Or, make the card draggable by default, but if the user clicks/holds on the text area, it's editable. Let's stick to: Double click text -> Edit mode. Drag -> Move. This is standard.
+
+    *   *Confetti:* Ensure it plays only once or a few times, then stops. Or a continuous burst. A continuous burst is fun.
+
+    *   *Dummy Data:* Create a function `seedData()` called only if storage is empty.
+
+9.  **Constructing the Final Output:** (This aligns with the provided good response).
+    *   Include Tailwind CDN.
+    *   Add Google Fonts (Inter) for a modern look.
+    *   Write clean, commented JS.
+    *   Ensure the "Done" column triggers confetti specifically.
+
+10. **Final Polish:** Check accessibility (aria-labels) and color contrast. Ensure the "Add Card" modal works for the specific column.
+
+**(Self-Correction on Drag and Drop)**: The native HTML5 DnD API is a bit clunky. I need to make sure `dragover` calls `e.preventDefault()` to allow dropping. I also need to handle the visual indicator of where the card will drop (the column highlighting).
+
+**(Self-Correction on Inline Edit)**: Using `contenteditable` is great. I need to listen for `blur` to save changes. I also need to handle the "Enter" key to finish editing.
+
+**(Self-Correction on Confetti)**: I'll use a lightweight custom implementation to avoid external dependencies like `canvas-confetti` library, keeping it strictly "vanilla JS" as requested, though the prompt allows Tailwind via CDN. I'll write a simple particle engine.
+
+Let's write the code.
+</think>
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Kanban Board</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            overflow-x: hidden; /* Prevent horizontal scroll during drag */
+        }
+
+        /* Custom Scrollbar for columns */
+        .kanban-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .kanban-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .kanban-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
+
+        /* Drag and Drop Visuals */
+        .dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            cursor: grabbing;
+        }
+
+        .column-highlight {
+            background-color: #e0e7ff; /* Indigo-100 */
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease;
+        }
+
+        /* Card Transitions */
+        .card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Content Editable Focus */
+        [contenteditable]:focus {
+            outline: 2px solid #3b82f6;
+            background-color: #fff;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        /* Modal Animation */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+        .modal-exit {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        /* Confetti Canvas */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm z-10 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">K</div>
+            <h1 class="text-xl font-bold text-gray-900 tracking-tight">Kanban Flow</h1>
+        </div>
+        <div class="text-sm text-gray-500">
+            <span id="card-count">0</span> tasks total
+        </div>
+    </header>
+
+    <!-- Main Board Area -->
+    <main class="flex-1 overflow-x-auto p-6">
+        <div class="flex gap-6 h-full min-w-max">
+            
+            <!-- Column: Backlog -->
+            <div class="flex flex-col w-80 h-full bg-gray-100 rounded-xl shadow-inner">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-xl">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-gray-400"></span> Backlog
+                    </h2>
+                    <span class="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded-full" id="count-backlog">0</span>
+                </div>
+                <div class="flex-1 p-3 overflow-y-auto kanban-scroll space-y-3" id="col-backlog" 
+                     ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                    <!-- Cards injected here -->
+                </div>
+                <div class="p-3 bg-white border-t border-gray-200 rounded-b-xl">
+                    <button onclick="openAddModal('backlog')" class="w-full py-2 px-3 text-sm text-indigo-600 font-medium bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add New
+                    </button>
+                </div>
+            </div>
+
+            <!-- Column: In Progress -->
+            <div class="flex flex-col w-80 h-full bg-gray-100 rounded-xl shadow-inner">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-xl">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span> In Progress
+                    </h2>
+                    <span class="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-1 rounded-full" id="count-inprogress">0</span>
+                </div>
+                <div class="flex-1 p-3 overflow-y-auto kanban-scroll space-y-3" id="col-inprogress"
+                     ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                </div>
+                <div class="p-3 bg-white border-t border-gray-200 rounded-b-xl">
+                    <button onclick="openAddModal('inprogress')" class="w-full py-2 px-3 text-sm text-blue-600 font-medium bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add New
+                    </button>
+                </div>
+            </div>
+
+            <!-- Column: Review -->
+            <div class="flex flex-col w-80 h-full bg-gray-100 rounded-xl shadow-inner">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-xl">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-yellow-500"></span> Review
+                    </h2>
+                    <span class="text-xs font-medium bg-yellow-50 text-yellow-600 px-2 py-1 rounded-full" id="count-review">0</span>
+                </div>
+                <div class="flex-1 p-3 overflow-y-auto kanban-scroll space-y-3" id="col-review"
+                     ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                </div>
+                <div class="p-3 bg-white border-t border-gray-200 rounded-b-xl">
+                    <button onclick="openAddModal('review')" class="w-full py-2 px-3 text-sm text-yellow-600 font-medium bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add New
+                    </button>
+                </div>
+            </div>
+
+            <!-- Column: Done -->
+            <div class="flex flex-col w-80 h-full bg-gray-100 rounded-xl shadow-inner">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-white rounded-t-xl">
+                    <h2 class="font-semibold text-gray-700 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-green-500"></span> Done
+                    </h2>
+                    <span class="text-xs font-medium bg-green-50 text-green-600 px-2 py-1 rounded-full" id="count-done">0</span>
+                </div>
+                <div class="flex-1 p-3 overflow-y-auto kanban-scroll space-y-3" id="col-done"
+                     ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
+                </div>
+                <div class="p-3 bg-white border-t border-gray-200 rounded-b-xl">
+                    <button onclick="openAddModal('done')" class="w-full py-2 px-3 text-sm text-green-600 font-medium bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add New
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Task Modal -->
+    <div id="add-modal" class="fixed inset-0 z-40 hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onclick="closeAddModal()"></div>
+        <!-- Modal Content -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 w-96 modal-enter">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Add New Task</h3>
+            <input type="text" id="new-task-title" placeholder="Enter task description..." class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+            <div class="flex justify-end gap-3">
+                <button onclick="closeAddModal()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                <button onclick="confirmAddTask()" class="px-4 py-2 text-sm bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm">Create Task</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onclick="closeDeleteModal()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl p-6 w-80 modal-enter">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900">Delete Task?</h3>
+                <p class="text-sm text-gray-500 mt-2">Are you sure you want to remove this task? This action cannot be undone.</p>
+                <div class="mt-6 flex justify-center gap-3">
+                    <button onclick="closeDeleteModal()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button id="confirm-delete-btn" class="px-4 py-2 text-sm bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 shadow-sm">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas for Confetti -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <script>
+        // --- State Management ---
+        const STORAGE_KEY = 'kanban_app_v1';
+        let tasks = [];
+        let currentDeleteId = null;
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTasks();
+            renderBoard();
+            
+            // Listen for Enter key in Add Modal
+            document.getElementById('new-task-title').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') confirmAddTask();
+            });
+        });
+
+        // --- Data Logic ---
+        function loadTasks() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                tasks = JSON.parse(stored);
+            } else {
+                seedData();
+            }
+        }
+
+        function saveTasks() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            updateCounts();
+        }
+
+        function seedData() {
+            // Initial dummy data if storage is empty
+            tasks = [
+                { id: 't1', title: 'Design System Setup', status: 'backlog' },
+                { id: 't2', title: 'Implement User Login', status: 'inprogress' },
+                { id: 't3', title: 'Fix Navigation Bug', status: 'review' },
+                { id: 't4', title: 'Database Optimization', status: 'done' },
+                { id: 't5', title: 'Write Unit Tests', status: 'backlog' }
+            ];
+            saveTasks();
+        }
+
+        function updateCounts() {
+            const counts = { backlog: 0, inprogress: 0, review: 0, done: 0 };
+            tasks.forEach(t => {
+                if (counts[t.status] !== undefined) counts[t.status]++;
+            });
+
+            document.getElementById('count-backlog').innerText = counts.backlog;
+            document.getElementById('count-inprogress').innerText = counts.inprogress;
+            document.getElementById('count-review').innerText = counts.review;
+            document.getElementById('count-done').innerText = counts.done;
+            document.getElementById('card-count').innerText = tasks.length;
+        }
+
+        // --- Rendering ---
+        function renderBoard() {
+            // Clear columns
+            ['backlog', 'inprogress', 'review', 'done'].forEach(status => {
+                document.getElementById(`col-${status}`).innerHTML = '';
+            });
+
+            // Populate cards
+            tasks.forEach(task => {
+                const card = createCardElement(task);
+                const col = document.getElementById(`col-${task.status}`);
+                if (col) col.appendChild(card);
+            });
+
+            updateCounts();
+        }
+
+        function createCardElement(task) {
+            const div = document.createElement('div');
+            div.className = 'card bg-white p-4 rounded-lg border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing relative group';
+            div.draggable = true;
+            div.id = task.id;
+            
+            // Drag Events
+            div.addEventListener('dragstart', dragStart);
+            div.addEventListener('dragend', dragEnd);
+
+            // Content Editable Logic
+            div.addEventListener('dblclick', () => {
+                const titleSpan = div.querySelector('.card-title');
+                titleSpan.contentEditable = true;
+                titleSpan.focus();
+                // Select all text
+                const range = document.createRange();
+                range.selectNodeContents(titleSpan);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            });
+
+            div.addEventListener('blur', () => {
+                const titleSpan = div.querySelector('.card-title');
+                titleSpan.contentEditable = false;
+                updateTaskTitle(task.id, titleSpan.innerText);
+            });
+
+            div.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    div.dispatchEvent(new Event('blur'));
+                }
+            });
+
+            div.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <div class="w-2 h-2 rounded-full status-dot-${task.status}"></div>
+                    <button onclick="openDeleteModal('${task.id}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity p-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+                <p class="card-title text-sm text-gray-700 leading-relaxed break-words">${task.title}</p>
+                <div class="mt-3 flex justify-between items-center">
+                     <span class="text-[10px] text-gray-400 font-mono">${task.id.toUpperCase()}</span>
+                </div>
+            `;
+            return div;
+        }
+
+        // --- Drag & Drop Logic ---
+        let draggedId = null;
+
+        function dragStart(e) {
+            draggedId = this.id;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function dragEnd(e) {
+            this.classList.remove('dragging');
+            draggedId = null;
+            // Remove all highlights
+            document.querySelectorAll('.column-highlight').forEach(el => el.classList.remove('column-highlight'));
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+        }
+
+        function dragEnter(e) {
+            e.preventDefault();
+            // Find the column container
+            const container = e.target.closest('[id^="col-"]');
+            if (container) {
+                container.classList.add('column-highlight');
+            }
+        }
+
+        function dragLeave(e) {
+            // Only remove if we are actually leaving the column
+            const container = e.target.closest('[id^="col-"]');
+            // Simple check: if we are not entering a child of the container
+            if (container && !container.contains(e.relatedTarget)) {
+                container.classList.remove('column-highlight');
+            }
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            const container = e.target.closest('[id^="col-"]');
+            if (container && draggedId) {
+                const newStatus = container.id.replace('col-', '');
+                moveTask(draggedId, newStatus);
+            }
+            // Clean up highlights
+            document.querySelectorAll('.column-highlight').forEach(el => el.classList.remove('column-highlight'));
+        }
+
+        function moveTask(id, newStatus) {
+            const task = tasks.find(t => t.id === id);
+            if (task && task.status !== newStatus) {
+                task.status = newStatus;
+                saveTasks();
+                renderBoard();
+                
+                // Trigger confetti if moved to Done
+                if (newStatus === 'done') {
+                    triggerConfetti();
+                }
+            }
+        }
+
+        function updateTaskTitle(id, newTitle) {
+            const task = tasks.find(t => t.id === id);
+            if (task && task.title !== newTitle) {
+                task.title = newTitle;
+                saveTasks(); // Save contenteditable changes
+            }
+        }
+
+        // --- Modal Logic ---
+        let currentAddStatus = '';
+
+        function openAddModal(status) {
+            currentAddStatus = status;
+            document.getElementById('add-modal').classList.remove('hidden');
+            document.getElementById('new-task-title').focus();
+        }
+
+        function closeAddModal() {
+            document.getElementById('add-modal').classList.add('hidden');
+            document.getElementById('new-task-title').value = '';
+        }
+
+        function confirmAddTask() {
+            const titleInput = document.getElementById('new-task-title');
+            const title = titleInput.value.trim();
+            if (title) {
+                const newTask = {
+                    id: 't' + Date.now(),
+                    title: title,
+                    status: currentAddStatus
+                };
+                tasks.push(newTask);
+                saveTasks();
+                renderBoard();
+                closeAddModal();
+            }
+        }
+
+        function openDeleteModal(id) {
+            currentDeleteId = id;
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            currentDeleteId = null;
+        }
+
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            if (currentDeleteId) {
+                tasks = tasks.filter(t => t.id !== currentDeleteId);
+                saveTasks();
+                renderBoard();
+                closeDeleteModal();
+            }
+        });
+
+        // --- Confetti Effect (Simple Canvas Implementation) ---
+        function triggerConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const particleCount = 150;
+            const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10 - 5,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 100,
+                    gravity: 0.2
+                });
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+
+                particles.forEach(p => {
+                    if (p.life > 0) {
+                        active = true;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += p.gravity;
+                        p.life -= 1.5;
+                        p.size *= 0.98;
+
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+
+                if (active) {
+                    requestAnimationFrame(animate);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            animate();
+        }
+
+        // Handle resize for canvas
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+    </script>
+</body>
+</html>
+```

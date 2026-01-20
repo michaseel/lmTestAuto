@@ -1,0 +1,83 @@
+{
+  "model": "zai-org/glm-4.6v-flash@4bit",
+  "timestamp": "2026-01-20T15:10:05.660482",
+  "load_time_seconds": 5.16310491701006,
+  "generation_time_seconds": null,
+  "rest_stats": {},
+  "usage": {},
+  "model_info": {},
+  "runtime": {},
+  "power": {
+    "cpu_watts": {
+      "avg": 5.326139455782313,
+      "max": 7.789,
+      "min": 2.971,
+      "samples": 294
+    },
+    "gpu_watts": {
+      "avg": 21.27033163265306,
+      "max": 34.784,
+      "min": 0.096,
+      "samples": 588
+    },
+    "ane_watts": {
+      "avg": 0.004496598639455783,
+      "max": 0.754,
+      "min": 0.0,
+      "samples": 294
+    },
+    "samplers": "cpu_power,gpu_power,ane_power"
+  },
+  "memory": {
+    "baseline": {
+      "system_used_bytes": 48823468032,
+      "lmstudio_rss_bytes": 1895940096
+    },
+    "after_load": {
+      "system_used_bytes": 56659427328,
+      "lmstudio_rss_bytes": 9767419904
+    },
+    "after_generation": {
+      "system_used_bytes": 58171244544,
+      "lmstudio_rss_bytes": 10224631808
+    },
+    "delta_since_baseline_after_load": {
+      "system_used_bytes": 7835959296,
+      "lmstudio_rss_bytes": 7871479808
+    },
+    "delta_since_baseline_after_generation": {
+      "system_used_bytes": 9347776512,
+      "lmstudio_rss_bytes": 8328691712
+    },
+    "delta_since_load_after_generation": {
+      "system_used_bytes": 1511817216,
+      "lmstudio_rss_bytes": 457211904
+    },
+    "hwm_during_generation": {
+      "system_used_hwm_bytes": 58918912000,
+      "lmstudio_rss_hwm_bytes": 10461937664
+    }
+  },
+  "derived": {
+    "tokens_per_second_fallback": null
+  },
+  "files": {
+    "html": null,
+    "raw_text": null,
+    "powermetrics_log": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/zai-org_glm-4.6v-flash_4bit_powermetrics.log"
+  },
+  "prompt": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_tokens": -1,
+    "num_ctx": 16384,
+    "text": "Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).\n\nRequirements:\n- Columns: Backlog, In Progress, Review, Done.\n- Cards must be:\n  - draggable across columns,\n  - editable in place,\n  - persisted in localStorage (state survives reloads) - please use your own namespace,\n  - deletable with a confirmation prompt.\n- Each column provides an \u201cAdd card\u201d action.\n- Style with Tailwind via CDN.\n- Add subtle CSS transitions and trigger a confetti animation when a card moves to \u201cDone\u201d.\n- Thoroughly comment the code.\n- dont use window.alert or window.prompt to add/edit/delete cards\n- if there are no cards yet, create some dummy cards\n- modern and vibrant design\n\nAs answer return the plain HTML of the working application (script and styles included)\n",
+    "gpu_setting": "max",
+    "reasoning_effort": "medium"
+  },
+  "load_key_used": "zai-org/glm-4.6v-flash@4bit",
+  "errors": {
+    "load": null,
+    "generation": "generation_failed: ReadTimeout: HTTPConnectionPool(host='127.0.0.1', port=1234): Read timed out. (read timeout=300)"
+  }
+}

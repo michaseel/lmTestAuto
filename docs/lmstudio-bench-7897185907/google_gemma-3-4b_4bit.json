@@ -1,0 +1,103 @@
+{
+  "model": "google/gemma-3-4b@4bit",
+  "timestamp": "2026-01-20T15:14:50.055199",
+  "load_time_seconds": 7.354313917006948,
+  "generation_time_seconds": 16.77870133300894,
+  "rest_stats": {
+    "tokens_per_second": 134.0546462896534,
+    "time_to_first_token": 0.3,
+    "generation_time": 16.448,
+    "stop_reason": "eosFound"
+  },
+  "usage": {
+    "prompt_tokens": 206,
+    "completion_tokens": 2205,
+    "total_tokens": 2411
+  },
+  "model_info": {
+    "arch": "gemma3",
+    "quant": "4bit",
+    "format": "safetensors",
+    "context_length": 4096
+  },
+  "runtime": {
+    "name": "mlx-llm-mac-arm64-apple-metal-advsimd",
+    "version": "0.44.0",
+    "supported_formats": [
+      "safetensors"
+    ]
+  },
+  "power": {
+    "cpu_watts": {
+      "avg": 5.082058823529412,
+      "max": 6.175,
+      "min": 2.027,
+      "samples": 17
+    },
+    "gpu_watts": {
+      "avg": 22.646,
+      "max": 25.14,
+      "min": 0.052,
+      "samples": 34
+    },
+    "ane_watts": {
+      "avg": 0.0,
+      "max": 0.0,
+      "min": 0.0,
+      "samples": 17
+    },
+    "samplers": "cpu_power,gpu_power,ane_power"
+  },
+  "memory": {
+    "baseline": {
+      "system_used_bytes": 47211479040,
+      "lmstudio_rss_bytes": 2043625472
+    },
+    "after_load": {
+      "system_used_bytes": 52315996160,
+      "lmstudio_rss_bytes": 6347948032
+    },
+    "after_generation": {
+      "system_used_bytes": 52428488704,
+      "lmstudio_rss_bytes": 6371966976
+    },
+    "delta_since_baseline_after_load": {
+      "system_used_bytes": 5104517120,
+      "lmstudio_rss_bytes": 4304322560
+    },
+    "delta_since_baseline_after_generation": {
+      "system_used_bytes": 5217009664,
+      "lmstudio_rss_bytes": 4328341504
+    },
+    "delta_since_load_after_generation": {
+      "system_used_bytes": 112492544,
+      "lmstudio_rss_bytes": 24018944
+    },
+    "hwm_during_generation": {
+      "system_used_hwm_bytes": 52615397376,
+      "lmstudio_rss_hwm_bytes": 6372147200
+    }
+  },
+  "derived": {
+    "tokens_per_second_fallback": 131.41660705659484
+  },
+  "files": {
+    "html": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/google_gemma-3-4b_4bit.html",
+    "raw_text": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/google_gemma-3-4b_4bit.txt",
+    "powermetrics_log": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/google_gemma-3-4b_4bit_powermetrics.log"
+  },
+  "prompt": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_tokens": -1,
+    "num_ctx": 16384,
+    "text": "Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).\n\nRequirements:\n- Columns: Backlog, In Progress, Review, Done.\n- Cards must be:\n  - draggable across columns,\n  - editable in place,\n  - persisted in localStorage (state survives reloads) - please use your own namespace,\n  - deletable with a confirmation prompt.\n- Each column provides an \u201cAdd card\u201d action.\n- Style with Tailwind via CDN.\n- Add subtle CSS transitions and trigger a confetti animation when a card moves to \u201cDone\u201d.\n- Thoroughly comment the code.\n- dont use window.alert or window.prompt to add/edit/delete cards\n- if there are no cards yet, create some dummy cards\n- modern and vibrant design\n\nAs answer return the plain HTML of the working application (script and styles included)\n",
+    "gpu_setting": "max",
+    "reasoning_effort": "medium"
+  },
+  "load_key_used": "google/gemma-3-4b@4bit",
+  "errors": {
+    "load": null,
+    "generation": null
+  }
+}

@@ -1,0 +1,313 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vanilla JS Kanban Board</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* Subtle transition for cards */
+  .card {
+    @apply bg-white rounded-lg shadow-md p-3 mb-2 cursor-move;
+    transition: transform 0.15s ease, background-color 0.2s;
+  }
+  .card.dragging {
+    opacity: 0.5;
+    transform: scale(1.03);
+  }
+  .column {
+    @apply bg-gray-100 rounded-lg p-4 flex flex-col h-full;
+    transition: background-color 0.2s;
+  }
+  .column.dragover {
+    background-color:#e2e8f0;
+  }
+</style>
+</head>
+<body class="bg-gray-200 min-h-screen flex items-center justify-center p-4">
+
+<div id="board" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-7xl">
+  <!-- Columns will be injected by JS -->
+</div>
+
+<!-- Modal overlay (used for add/edit/delete confirmations) -->
+<div id="modalOverlay"
+     class="fixed inset-0 bg-black/30 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+    <h2 id="modalTitle" class="text-xl font-semibold mb-4"></h2>
+    <textarea id="modalInput"
+              class="w-full border rounded p-2 mb-4"
+              rows="3"></textarea>
+    <div class="flex justify-end space-x-2">
+      <button id="modalCancel"
+              class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
+      <button id="modalConfirm"
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confetti library -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+<script>
+// =============================
+//   Kanban Board Implementation
+// =============================
+
+// Namespace for localStorage to avoid collisions
+const STORAGE_KEY = 'myKanbanBoard_v1';
+
+// Column definitions
+const COLUMNS = [
+  { id: 'backlog',    title: 'Backlog' },
+  { id: 'in-progress',title: 'In Progress' },
+  { id: 'review',     title: 'Review' },
+  { id: 'done',       title: 'Done' }
+];
+
+// Keep a reference to the dragged card element
+let dragSrcEl = null;
+
+// ---------- Utility Functions ----------
+/**
+ * Save current board state to localStorage.
+ */
+function saveBoard() {
+  const data = {};
+  COLUMNS.forEach(col => {
+    const cards = Array.from(document.querySelectorAll(`#${col.id} .card`))
+      .map(card => ({
+        id: card.dataset.id,
+        content: card.innerText.trim()
+      }));
+    data[col.id] = cards;
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+/**
+ * Load board state from localStorage. If empty, create dummy cards.
+ */
+function loadBoard() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    // No data – create some demo cards
+    const demo = {
+      backlog: [
+        { id: generateId(), content: 'Idea: New landing page' },
+        { id: generateId(), content: 'Research competitor pricing' }
+      ],
+      'in-progress': [
+        { id: generateId(), content: 'Implement authentication' }
+      ],
+      review: [],
+      done: [{ id: generateId(), content: 'Set up CI/CD pipeline' }]
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(demo));
+  }
+}
+
+/**
+ * Generate a simple unique ID for cards.
+ */
+function generateId() {
+  return 'c_' + Math.random().toString(36).substr(2,9);
+}
+
+/**
+ * Show custom modal dialog.
+ * @param {Object} opts - title, placeholder, defaultValue, onConfirm
+ */
+function showModal(opts) {
+  const overlay = document.getElementById('modalOverlay');
+  document.getElementById('modalTitle').innerText = opts.title;
+  const textarea = document.getElementById('modalInput');
+  textarea.placeholder = opts.placeholder || '';
+  textarea.value = opts.defaultValue || '';
+
+  // Clean previous listeners
+  const confirmBtn = document.getElementById('modalConfirm');
+  const cancelBtn = document.getElementById('modalCancel');
+  confirmBtn.onclick = null;
+  cancelBtn.onclick = null;
+
+  confirmBtn.onclick = () => {
+    const value = textarea.value.trim();
+    if (value) opts.onConfirm(value);
+    overlay.classList.add('hidden');
+  };
+  cancelBtn.onclick = () => overlay.classList.add('hidden');
+
+  overlay.classList.remove('hidden');
+  textarea.focus();
+}
+
+/**
+ * Trigger confetti animation when a card lands in "Done".
+ */
+function launchConfetti() {
+  const duration = 2 * 1000;
+  const end = Date.now() + duration;
+
+  (function frame() {
+    // launch a few bursts
+    confetti({
+      particleCount: 30,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
+// ---------- Card Creation ----------
+/**
+ * Create a card DOM element.
+ * @param {Object} data - {id, content}
+ */
+function createCard(data) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.draggable = true;
+  div.dataset.id = data.id;
+  div.textContent = data.content;
+
+  // Make the card editable on double‑click
+  div.addEventListener('dblclick', () => {
+    showModal({
+      title: 'Edit Card',
+      placeholder: 'Enter new text...',
+      defaultValue: div.textContent,
+      onConfirm: (newText) => {
+        div.textContent = newText;
+        saveBoard();
+      }
+    });
+  });
+
+  // Delete button (appears on hover)
+  const delBtn = document.createElement('button');
+  delBtn.innerHTML = '&times;';
+  delBtn.title = 'Delete card';
+  delBtn.className = 'absolute top-1 right-1 text-red-600 hover:text-red-800 hidden';
+  delBtn.onclick = (e) => {
+    e.stopPropagation(); // prevent drag start
+    showModal({
+      title: 'Confirm Deletion',
+      placeholder: '',
+      defaultValue: '',
+      onConfirm: () => {
+        div.remove();
+        saveBoard();
+      }
+    });
+  };
+  const wrapper = document.createElement('div');
+  wrapper.className = 'relative';
+  wrapper.appendChild(div);
+  wrapper.appendChild(delBtn);
+
+  // Show delete button on hover
+  wrapper.addEventListener('mouseenter', () => delBtn.classList.remove('hidden'));
+  wrapper.addEventListener('mouseleave', () => delBtn.classList.add('hidden'));
+
+  // Drag events
+  div.addEventListener('dragstart', handleDragStart);
+  div.addEventListener('dragend', handleDragEnd);
+
+  return wrapper;
+}
+
+// ---------- Column Rendering ----------
+/**
+ * Render all columns and populate cards.
+ */
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = ''; // clear
+
+  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+
+  COLUMNS.forEach(col => {
+    const colDiv = document.createElement('div');
+    colDiv.id = col.id;
+    colDiv.className = 'column';
+
+    // Header
+    const header = document.createElement('h2');
+    header.textContent = col.title;
+    header.className = 'text-xl font-bold mb-3 text-center';
+    colDiv.appendChild(header);
+
+    // Card container (flex column)
+    const container = document.createElement('div');
+    container.className = 'flex-1 flex flex-col';
+    colDiv.appendChild(container);
+
+    // Populate cards
+    (stored[col.id] || []).forEach(cardData => {
+      container.appendChild(createCard(cardData));
+    });
+
+    // Add Card button
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '+ Add card';
+    addBtn.className = 'mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700';
+    addBtn.onclick = () => {
+      showModal({
+        title: `Add Card to ${col.title}`,
+        placeholder: 'Card content...',
+        onConfirm: (text) => {
+          const newCard = { id: generateId(), content: text };
+          container.appendChild(createCard(newCard));
+          // Update storage
+          stored[col.id].push(newCard);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+        }
+      });
+    };
+    colDiv.appendChild(addBtn);
+
+    // Drag‑over handling for the column itself
+    colDiv.addEventListener('dragover', (e) => {
+      e.preventDefault(); // allow drop
+    });
+    colDiv.addEventListener('dragenter', () => colDiv.classList.add('dragover'));
+    colDiv.addEventListener('dragleave', () => colDiv.classList.remove('dragover'));
+    colDiv.addEventListener('drop', (e) => {
+      e.preventDefault();
+      colDiv.classList.remove('dragover');
+      if (!dragSrcEl) return;
+      const targetContainer = container; // column's inner card list
+      targetContainer.appendChild(dragSrcEl.parentElement); // wrapper element
+
+      // If moved to Done, fire confetti
+      if (col.id === 'done') launchConfetti();
+
+      saveBoard();
+    });
+
+    board.appendChild(colDiv);
+  });
+}
+
+// ---------- Drag Handlers ----------
+function handleDragStart(e) {
+  dragSrcEl = e.target;
+  e.dataTransfer.effectAllowed = 'move';
+  // Firefox compatibility – set dummy data
+  e.dataTransfer.setData('text/html', e.target.outerHTML);
+  setTimeout(() => e.target.classList.add('dragging'), 0);
+}
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+  dragSrcEl = null;
+}
+
+// ---------- Init ----------
+loadBoard();   // ensure data exists
+renderBoard(); // draw UI
+
+</script>
+</body>
+</html>

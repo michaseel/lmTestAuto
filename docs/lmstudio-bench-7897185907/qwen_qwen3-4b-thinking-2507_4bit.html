@@ -1,0 +1,528 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Kanban Board</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .kanban {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .column {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      transition: transform 0.3s;
+    }
+    
+    .column:hover {
+      transform: translateY(-5px);
+    }
+    
+    .column-header {
+      background: #3b82f6;
+      color: white;
+      padding: 15px 20px;
+      font-weight: bold;
+      font-size: 1.2rem;
+      text-align: center;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .cards-container {
+      padding: 20px;
+      height: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+    }
+    
+    .card:hover {
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+    
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .card-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+    
+    .card-desc {
+      color: #64748b;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+    
+    .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      justify-content: flex-end;
+    }
+    
+    .btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 0.9rem;
+    }
+    
+    .btn:hover {
+      background: #2565fe;
+    }
+    
+    .delete-btn {
+      background: #ef4444;
+    }
+    
+    .delete-btn:hover {
+      background: #dc2626;
+    }
+    
+    .edit-btn {
+      background: #1e40af;
+    }
+    
+    .edit-btn:hover {
+      background: #163597;
+    }
+    
+    .add-card {
+      background: white;
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 12px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin: 10px 0;
+      font-weight: 600;
+      color: #3b82f6;
+    }
+    
+    .add-card:hover {
+      background: #f0f9ff;
+      border-color: #64748b;
+    }
+    
+    .add-card:active {
+      transform: scale(0.98);
+    }
+    
+    .card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100%;
+      overflow-y: auto;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 30px 0;
+      color: #64748b;
+      font-size: 1.1rem;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      font-size: 1.8rem;
+      color: #1e293b;
+      font-weight: 600;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    
+    @media (max-width: 768px) {
+      .kanban {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .kanban {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Simple Kanban Board</h1>
+      <div class="action-buttons">
+        <button class="btn-primary" id="newCardBtn">+ Add New Card</button>
+      </div>
+    </div>
+    
+    <div class="kanban" id="kanban">
+      <!-- Backlog Column -->
+      <div class="column" data-column="backlog">
+        <div class="column-header">Backlog</div>
+        <div class="cards-container">
+          <div class="card-list" id="backlogList">
+            <!-- Cards will be added here -->
+          </div>
+          <div class="empty-state" id="backlogEmpty">No cards in Backlog</div>
+        </div>
+      </div>
+      
+      <!-- To Do Column -->
+      <div class="column" data-column="todo">
+        <div class="column-header">To Do</div>
+        <div class="cards-container">
+          <div class="card-list" id="todoList">
+            <!-- Cards will be added here -->
+          </div>
+          <div class="empty-state" id="todoEmpty">No cards in To Do</div>
+        </div>
+      </div>
+      
+      <!-- In Progress Column -->
+      <div class="column" data-column="inprogress">
+        <div class="column-header">In Progress</div>
+        <div class="cards-container">
+          <div class="card-list" id="inProgressList">
+            <!-- Cards will be added here -->
+          </div>
+          <div class="empty-state" id="inProgressEmpty">No cards in In Progress</div>
+        </div>
+      </div>
+      
+      <!-- Done Column -->
+      <div class="column" data-column="done">
+        <div class="column-header">Done</div>
+        <div class="cards-container">
+          <div class="card-list" id="doneList">
+            <!-- Cards will be added here -->
+          </div>
+          <div class="empty-state" id="doneEmpty">No cards in Done</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const columns = {
+        backlog: document.querySelector('[data-column="backlog"]'),
+        todo: document.querySelector('[data-column="todo"]'),
+        inprogress: document.querySelector('[data-column="inprogress"]'),
+        done: document.querySelector('[data-column="done"]')
+      };
+
+      const cardLists = {
+        backlog: document.getElementById('backlogList'),
+        todo: document.getElementById('todoList'),
+        inProgress: document.getElementById('inProgressList'),
+        done: document.getElementById('doneList')
+      };
+
+      // Initialize with sample data
+      const initCards = [
+        { id: '1', title: 'Design Homepage', description: 'Create responsive homepage layout', status: 'backlog' },
+        { id: '2', title: 'Develop API', description: 'Implement authentication API endpoints', status: 'todo' },
+        { id: '3', title: 'Test Mobile App', description: 'Conduct cross-platform testing', status: 'inprogress' }
+      ];
+
+      // DOM Elements
+      const newCardBtn = document.getElementById('newCardBtn');
+      const kanban = document.getElementById('kanban');
+
+      // Initialize cards
+      initCards.forEach(card => {
+        createCard(card);
+      });
+
+      // Create card function
+      function createCard(cardData) {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'card';
+        cardEl.dataset.id = cardData.id;
+        cardEl.dataset.status = cardData.status;
+        
+        cardEl.innerHTML = `
+          <div class="card-content">
+            <h3 class="card-title">${cardData.title}</h3>
+            <p class="card-desc">${cardData.description}</p>
+          </div>
+          <div class="card-actions">
+            <button class="btn edit-btn" data-id="${cardData.id}">Edit</button>
+            <button class="btn delete-btn" data-id="${cardData.id}">Delete</button>
+          </div>
+        `;
+        
+        cardEl.querySelector('.edit-btn').addEventListener('click', () => {
+          const titleInput = prompt('Edit card title:', cardEl.querySelector('.card-title').textContent);
+          if (titleInput) {
+            cardEl.querySelector('.card-title').textContent = titleInput;
+            updateCard(cardData.id, { title: titleInput });
+          }
+        });
+        
+        cardEl.querySelector('.delete-btn').addEventListener('click', () => {
+          if (confirm('Delete this card?')) {
+            deleteCard(cardData.id);
+          }
+        });
+        
+        cardEl.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', e.target.dataset.id);
+        });
+        
+        cardEl.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        });
+        
+        cardEl.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const id = e.dataTransfer.getData('text/plain');
+          const card = document.querySelector(`.card[data-id="${id}"]`);
+          
+          if (card) {
+            const newStatus = card.dataset.status === 'done' ? 'backlog' : 
+                            card.dataset.status === 'backlog' ? 'todo' : 
+                            card.dataset.status === 'todo' ? 'inprogress' : 'done';
+            moveCard(card, newStatus);
+          }
+        });
+        
+        return cardEl;
+      }
+
+      // Move card between columns
+      function moveCard(card, newStatus) {
+        const cardId = card.dataset.id;
+        const newColumn = columns[newStatus];
+        const newColumnList = cardLists[newStatus];
+        
+        // Update card status
+        card.dataset.status = newStatus;
+        
+        // Remove from current column
+        card.closest('.card-list').removeChild(card);
+        
+        // Add to new column
+        newColumnList.appendChild(card);
+        
+        // Update UI
+        updateCard(cardId, { status: newStatus });
+      }
+
+      // Update card data
+      function updateCard(cardId, updates) {
+        const card = document.querySelector(`.card[data-id="${cardId}"]`);
+        if (card) {
+          Object.keys(updates).forEach(key => {
+            if (key === 'title') {
+              card.querySelector('.card-title').textContent = updates.title;
+            }
+            if (key === 'status') {
+              card.dataset.status = updates.status;
+            }
+          });
+        }
+      }
+
+      // Delete card
+      function deleteCard(cardId) {
+        const card = document.querySelector(`.card[data-id="${cardId}"]`);
+        if (card) {
+          card.remove();
+          const allCards = document.querySelectorAll('.card');
+          const remainingCards = Array.from(allCards).filter(c => c.dataset.id !== cardId);
+          
+          // Update UI
+          updateCard(cardId, { status: 'deleted' });
+        }
+      }
+
+      // Add new card
+      newCardBtn.addEventListener('click', () => {
+        const title = prompt('Enter new card title:');
+        const description = prompt('Enter card description:');
+        
+        if (title) {
+          const newCard = {
+            id: `card-${Date.now()}`,
+            title: title,
+            description: description,
+            status: 'backlog'
+          };
+          
+          const cardEl = createCard(newCard);
+          document.getElementById('backlogList').appendChild(cardEl);
+          
+          // Add to state
+          const cards = JSON.parse(localStorage.getItem('kanban-cards') || '[]');
+          cards.push(newCard);
+          localStorage.setItem('kanban-cards', JSON.stringify(cards));
+        }
+      });
+
+      // Initialize empty states
+      function initEmptyStates() {
+        const emptyStates = {
+          backlog: document.getElementById('backlogEmpty'),
+          todo: document.getElementById('todoEmpty'),
+          inProgress: document.getElementById('inProgressEmpty'),
+          done: document.getElementById('doneEmpty')
+        };
+        
+        Object.keys(emptyStates).forEach(key => {
+          const state = emptyStates[key];
+          if (state) {
+            state.style.display = 'none';
+          }
+        });
+      }
+
+      // Handle drag and drop
+      document.querySelectorAll('.column').forEach(column => {
+        column.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        });
+        
+        column.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const cardId = e.dataTransfer.getData('text/plain');
+          const card = document.querySelector(`.card[data-id="${cardId}"]`);
+          
+          if (card) {
+            moveCard(card, column.dataset.column);
+          }
+        });
+      });
+
+      // Initialize empty states
+      initEmptyStates();
+
+      // Handle new card creation
+      newCardBtn.addEventListener('click', () => {
+        const title = prompt('Enter new card title:');
+        const description = prompt('Enter card description:');
+        
+        if (title) {
+          const newCard = {
+            id: `card-${Date.now()}`,
+            title: title,
+            description: description,
+            status: 'backe'
+          };
+          
+          const cardEl = createCard(newCard);
+          document.getElementById('backlogList').appendChild(cardEl);
+          
+          // Save to local storage
+          const cards = JSON.parse(localStorage.getItem('kanban-cards') || '[]');
+          cards.push(newCard);
+          localStorage.setItem('kanban-cards', JSON.stringify(cards));
+        }
+      });
+
+      // Handle card editing
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const cardId = e.target.dataset.id;
+          const card = document.querySelector(`.card[data-id="${cardId}"]`);
+          
+          if (card) {
+            const newTitle = prompt('Edit card title:', card.querySelector('.card-title').textContent);
+            if (newTitle) {
+              card.querySelector('.card-title').textContent = newTitle;
+              updateCard(cardId, { title: newTitle });
+            }
+          }
+        });
+      });
+
+      // Handle card deletion
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const cardId = e.target.dataset.id;
+          if (confirm('Delete this card?')) {
+            deleteCard(cardId);
+          }
+        });
+      });
+
+      // Initialize with sample data
+      const sampleCards = [
+        { id: '1', title: 'Design Homepage', description: 'Create responsive homepage layout', status: 'backlog' },
+        { id: '2', title: 'Develop API', description: 'Implement authentication API endpoints', status: 'todo' },
+        { id: '3', title: 'Test Mobile App', description: 'Conduct cross-platform testing', status: 'inprogress' }
+      ];
+
+      // Save to local storage
+      const savedCards = JSON.parse(localStorage.getItem('kanban-cards') || '[]');
+      const allCards = [...savedCards, ...sampleCards];
+      
+      // Create cards from saved data
+      allCards.forEach(card => {
+        createCard(card);
+      });
+    });
+  </script>
+</body>
+</html>

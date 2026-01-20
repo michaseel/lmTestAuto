@@ -1,0 +1,103 @@
+{
+  "model": "nvidia/nemotron-3-nano@4bit",
+  "timestamp": "2026-01-20T15:10:41.068578",
+  "load_time_seconds": 5.705485332990065,
+  "generation_time_seconds": 27.432950792004704,
+  "rest_stats": {
+    "tokens_per_second": 141.61403038988087,
+    "time_to_first_token": 0.282,
+    "generation_time": 27.115,
+    "stop_reason": "eosFound"
+  },
+  "usage": {
+    "prompt_tokens": 205,
+    "completion_tokens": 3840,
+    "total_tokens": 4045
+  },
+  "model_info": {
+    "arch": "nemotron_h",
+    "quant": "4bit",
+    "format": "safetensors",
+    "context_length": 4096
+  },
+  "runtime": {
+    "name": "mlx-llm-mac-arm64-apple-metal-advsimd",
+    "version": "0.44.0",
+    "supported_formats": [
+      "safetensors"
+    ]
+  },
+  "power": {
+    "cpu_watts": {
+      "avg": 6.296074074074074,
+      "max": 6.897,
+      "min": 2.453,
+      "samples": 27
+    },
+    "gpu_watts": {
+      "avg": 19.838981481481483,
+      "max": 27.557,
+      "min": 1.349,
+      "samples": 54
+    },
+    "ane_watts": {
+      "avg": 0.0,
+      "max": 0.0,
+      "min": 0.0,
+      "samples": 27
+    },
+    "samplers": "cpu_power,gpu_power,ane_power"
+  },
+  "memory": {
+    "baseline": {
+      "system_used_bytes": 48765108224,
+      "lmstudio_rss_bytes": 2334801920
+    },
+    "after_load": {
+      "system_used_bytes": 67225026560,
+      "lmstudio_rss_bytes": 20840988672
+    },
+    "after_generation": {
+      "system_used_bytes": 67340779520,
+      "lmstudio_rss_bytes": 20571406336
+    },
+    "delta_since_baseline_after_load": {
+      "system_used_bytes": 18459918336,
+      "lmstudio_rss_bytes": 18506186752
+    },
+    "delta_since_baseline_after_generation": {
+      "system_used_bytes": 18575671296,
+      "lmstudio_rss_bytes": 18236604416
+    },
+    "delta_since_load_after_generation": {
+      "system_used_bytes": 115752960,
+      "lmstudio_rss_bytes": -269582336
+    },
+    "hwm_during_generation": {
+      "system_used_hwm_bytes": 67424272384,
+      "lmstudio_rss_hwm_bytes": 20857667584
+    }
+  },
+  "derived": {
+    "tokens_per_second_fallback": 139.97765056754898
+  },
+  "files": {
+    "html": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/nvidia_nemotron-3-nano_4bit.html",
+    "raw_text": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/nvidia_nemotron-3-nano_4bit.txt",
+    "powermetrics_log": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/nvidia_nemotron-3-nano_4bit_powermetrics.log"
+  },
+  "prompt": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "max_tokens": -1,
+    "num_ctx": 16384,
+    "text": "Create a fully functional Kanban board in a single HTML file using vanilla JavaScript (no frameworks like react).\n\nRequirements:\n- Columns: Backlog, In Progress, Review, Done.\n- Cards must be:\n  - draggable across columns,\n  - editable in place,\n  - persisted in localStorage (state survives reloads) - please use your own namespace,\n  - deletable with a confirmation prompt.\n- Each column provides an \u201cAdd card\u201d action.\n- Style with Tailwind via CDN.\n- Add subtle CSS transitions and trigger a confetti animation when a card moves to \u201cDone\u201d.\n- Thoroughly comment the code.\n- dont use window.alert or window.prompt to add/edit/delete cards\n- if there are no cards yet, create some dummy cards\n- modern and vibrant design\n\nAs answer return the plain HTML of the working application (script and styles included)\n",
+    "gpu_setting": "max",
+    "reasoning_effort": "medium"
+  },
+  "load_key_used": "nvidia/nemotron-3-nano@4bit",
+  "errors": {
+    "load": null,
+    "generation": null
+  }
+}
