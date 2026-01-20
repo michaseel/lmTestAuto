@@ -159,7 +159,11 @@ def load_model(model_id):
     # Allow JIT via REST too, but we want explicit load to measure load time
     # lms load accepts a "model key" from `lms ls`; use --gpu to maximize offload
     # We pass model_id; LM Studio resolves it (works for downloaded model keys).
-    run(["lms", "load", model_id, "--gpu", GPU_SETTING, "-y"])
+    cmd = ["lms", "load", model_id, "--gpu", GPU_SETTING]
+    if NUM_CTX is not None:
+        cmd.extend(["--context-length", str(NUM_CTX)])
+    cmd.append("-y")
+    run(cmd)
     return time.perf_counter() - t0
 
 def load_with_fallbacks(api_id: str, cli_key: str):

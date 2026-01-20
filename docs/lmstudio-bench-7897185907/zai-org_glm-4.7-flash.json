@@ -1,24 +1,24 @@
 {
   "model": "zai-org/glm-4.7-flash",
-  "timestamp": "2026-01-20T11:33:15.110282",
-  "load_time_seconds": 3.395032667001942,
-  "generation_time_seconds": 128.8258585420117,
+  "timestamp": "2026-01-20T12:30:30.109239",
+  "load_time_seconds": 3.5122882499999832,
+  "generation_time_seconds": 127.52469566700165,
   "rest_stats": {
-    "tokens_per_second": 55.15576096041756,
-    "time_to_first_token": 0.449,
-    "generation_time": 128.328,
+    "tokens_per_second": 52.4429466178702,
+    "time_to_first_token": 0.334,
+    "generation_time": 127.151,
     "stop_reason": "eosFound"
   },
   "usage": {
     "prompt_tokens": 190,
-    "completion_tokens": 7078,
-    "total_tokens": 7268
+    "completion_tokens": 6668,
+    "total_tokens": 6858
   },
   "model_info": {
     "arch": "glm4_moe_lite",
     "quant": "6bit",
     "format": "safetensors",
-    "context_length": 4096
+    "context_length": 16384
   },
   "runtime": {
     "name": "mlx-llm-mac-arm64-apple-metal-advsimd",
@@ -29,57 +29,57 @@
   },
   "power": {
     "cpu_watts": {
-      "avg": 4.136629921259843,
-      "max": 7.926,
-      "min": 0.772,
-      "samples": 127
+      "avg": 4.441576,
+      "max": 6.676,
+      "min": 1.573,
+      "samples": 125
     },
     "gpu_watts": {
-      "avg": 22.548114173228345,
-      "max": 26.61,
-      "min": 0.421,
-      "samples": 254
+      "avg": 20.584832,
+      "max": 23.207,
+      "min": 5.672,
+      "samples": 250
     },
     "ane_watts": {
       "avg": 0.0,
       "max": 0.0,
       "min": 0.0,
-      "samples": 127
+      "samples": 125
     },
     "samplers": "cpu_power,gpu_power,ane_power"
   },
   "memory": {
     "baseline": {
-      "system_used_bytes": 36575313920,
-      "lmstudio_rss_bytes": 2257747968
+      "system_used_bytes": 45163413504,
+      "lmstudio_rss_bytes": 2253750272
     },
     "after_load": {
-      "system_used_bytes": 54832168960,
-      "lmstudio_rss_bytes": 27345256448
+      "system_used_bytes": 63434588160,
+      "lmstudio_rss_bytes": 27342045184
     },
     "after_generation": {
-      "system_used_bytes": 65779548160,
-      "lmstudio_rss_bytes": 27416428544
+      "system_used_bytes": 76947554304,
+      "lmstudio_rss_bytes": 27371339776
     },
     "delta_since_baseline_after_load": {
-      "system_used_bytes": 18256855040,
-      "lmstudio_rss_bytes": 25087508480
+      "system_used_bytes": 18271174656,
+      "lmstudio_rss_bytes": 25088294912
     },
     "delta_since_baseline_after_generation": {
-      "system_used_bytes": 29204234240,
-      "lmstudio_rss_bytes": 25158680576
+      "system_used_bytes": 31784140800,
+      "lmstudio_rss_bytes": 25117589504
     },
     "delta_since_load_after_generation": {
-      "system_used_bytes": 10947379200,
-      "lmstudio_rss_bytes": 71172096
+      "system_used_bytes": 13512966144,
+      "lmstudio_rss_bytes": 29294592
     },
     "hwm_during_generation": {
-      "system_used_hwm_bytes": 66031140864,
-      "lmstudio_rss_hwm_bytes": 27415560192
+      "system_used_hwm_bytes": 76949716992,
+      "lmstudio_rss_hwm_bytes": 27384332288
     }
   },
   "derived": {
-    "tokens_per_second_fallback": 54.94238563674526
+    "tokens_per_second_fallback": 52.28791149136939
   },
   "files": {
     "html": "/Users/mseel/dev/lmTestAuto/reports/lmstudio-bench-7897185907/zai-org_glm-4.7-flash.html",

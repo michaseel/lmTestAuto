@@ -1,118 +1,126 @@
 1.  **Analyze the Request:**
-    *   **Goal:** Create a fully functional Kanban board.
-    *   **Format:** Single HTML file (HTML, CSS, JS combined).
-    *   **Tech Stack:** Vanilla JavaScript, Tailwind CSS (via CDN).
-    *   **Core Features:**
-        *   Columns: Backlog, In Progress, Review, Done.
-        *   Cards: Draggable, Editable (in-place), LocalStorage persistence (custom namespace), Deletable (custom confirmation UI, no `alert/prompt`).
-        *   Actions: "Add card" per column.
-    *   **Visuals:** Modern, vibrant, subtle transitions, confetti animation on "Done".
-    *   **Data:** Dummy data if empty.
-    *   **Constraints:** No `window.alert`, no `window.prompt`.
+
+    *   **Goal:** Create a fully functional Kanban board in a single HTML file.
+    *   **Tech Stack:** Vanilla JavaScript, HTML, CSS (Tailwind via CDN).
+    *   **Columns:** Backlog, In Progress, Review, Done.
+    *   **Card Features:**
+        *   Draggable (drag and drop API).
+        *   Editable in place.
+        *   Persisted in `localStorage` (custom namespace).
+        *   Deletable with confirmation (custom modal/dialog, no `window.confirm`).
+    *   **Interactions:** "Add card" action per column.
+    *   **Visuals:** Tailwind CSS, subtle transitions, confetti animation on "Done".
+    *   **Content:** Dummy data if empty.
+    *   **Constraints:** Single file, no `window.alert`/`window.prompt`.
+    *   **Output:** Plain HTML.
 
 2.  **Architecture & Data Structure:**
-    *   *State:* I need a robust state object to hold the board data.
-        *   Structure: `{ columns: { backlog: [], inProgress: [], review: [], done: [] } }`
-        *   Card structure: `{ id: string, title: string, description: string, timestamp: number }`
-    *   *Persistence:* `localStorage.getItem('kanban_v1')` and `setItem`.
-    *   *DOM Structure:*
-        *   Header (Title, maybe a reset button).
-        *   Grid Container (Flex or Grid).
-        *   Columns (Divs).
-        *   Card Lists (ULs or Divs).
-        *   Modals (for adding/editing/deleting to replace alerts).
 
-3.  **Step-by-Step Implementation Plan:**
+    *   *State:* A simple array of objects representing cards.
+    *   *Card Object:* `{ id: string, title: string, description: string, status: string }`.
+    *   *Storage Key:* `kanban-v1-data`.
+    *   *Columns:* Fixed array of strings `['backlog', 'in-progress', 'review', 'done']`.
 
-    *   **Step 1: HTML Skeleton & Tailwind Setup:**
+3.  **UI/UX Design (Tailwind):**
+
+    *   *Layout:* Header + Main Board (Grid/Flex).
+    *   *Board:* Horizontal scrollable container for columns.
+    *   *Columns:* Light gray background, rounded corners, header with title and add button.
+    *   *Cards:* White background, shadow, rounded corners, grab cursor.
+    *   *Modals:* Need a generic modal structure for "Add/Edit" and "Delete Confirmation".
+
+4.  **Step-by-Step Implementation Plan:**
+
+    *   **Step 1: HTML Skeleton & Tailwind Setup.**
         *   Include Tailwind CDN.
-        *   Include a canvas/confetti library (or write a simple one). *Self-correction: The prompt asks for a single file. Writing a simple confetti script is better than relying on a potentially heavy external library, but for a "vibrant" effect, a lightweight CDN like `canvas-confetti` is standard and efficient. I'll use the CDN.*
-        *   Define the layout structure.
+        *   Include a Confetti library (canvas-confetti) via CDN for the celebration effect.
+        *   Define the main container and column containers.
 
-    *   **Step 2: State Management:**
-        *   Create a `state` object.
-        *   Create `saveState()` and `loadState()` functions.
-        *   Create `init()` with dummy data fallback.
+    *   **Step 2: CSS (Custom Styles).**
+        *   Tailwind handles most, but need specific styles for drag-and-drop visual feedback (dragging class, drop zones).
+        *   Modal styling (hidden by default).
 
-    *   **Step 3: Rendering Logic:**
-        *   `renderBoard()`: Clears current DOM, loops through state columns, creates HTML elements.
-        *   *Note:* For drag-and-drop to work efficiently, it's often easier to render the HTML and then attach event listeners, rather than re-rendering the whole board on every drag move. However, for a simple vanilla JS app, re-rendering the specific card or just moving the DOM element is best.
-        *   *Decision:* I will use the HTML5 Drag and Drop API. I'll render the board once. When a card is dropped, I update the state and re-render the board (or just the list) to ensure data consistency.
+    *   **Step 3: JavaScript - State Management.**
+        *   Load from `localStorage` or generate dummy data.
+        *   Function to save to `localStorage`.
 
-    *   **Step 4: Drag and Drop Logic:**
-        *   `dragstart`: Store ID of dragged item.
-        *   `dragover`: Allow dropping.
-        *   `drop`: Get target column, update state, save, re-render.
-        *   *Visuals:* Add classes like `dragging` to style the item being moved.
+    *   **Step 4: JavaScript - Rendering.**
+        *   `renderBoard()`: Clears columns, loops through state, appends cards to correct columns.
 
-    *   **Step 5: Card Actions (Add, Edit, Delete):**
-        *   *Add:* Click "+" button -> Open Modal -> Submit -> Update State -> Save -> Render.
-        *   *Edit:* Double-click or click "Edit" icon -> Open Modal (pre-filled) -> Submit -> Update State -> Save -> Render.
-        *   *Delete:* Click "Delete" icon -> Open Confirmation Modal -> Confirm -> Update State -> Save -> Render.
+    *   **Step 5: JavaScript - Drag and Drop.**
+        *   Use the HTML5 Drag and Drop API (`dragstart`, `dragover`, `drop`, `dragend`).
+        *   *Logic:* When dropping, update the card's status in the state and re-render (or move DOM element for performance, but re-rendering is safer for this scope to ensure order/ID consistency). Let's go with updating state + DOM manipulation for smoother feel.
 
-    *   **Step 6: Styling (Tailwind + Custom CSS):**
-        *   Use Tailwind for layout, colors, spacing.
-        *   Custom CSS for specific drag-and-drop visuals (opacity, borders) and transitions.
-        *   Modern aesthetics: gradients, rounded corners, shadows.
+    *   **Step 6: JavaScript - Interactions (Add/Edit/Delete).**
+        *   *Add:* Open modal -> Input Title -> Save -> Add to state -> Render.
+        *   *Edit:* Click card -> Open modal (prefilled) -> Save -> Update state -> Render.
+        *   *Delete:* Click trash icon -> Open confirmation modal -> Confirm -> Remove from state -> Render.
 
-    *   **Step 7: Confetti:**
-        *   Trigger a function `celebrate()` using the CDN library when a card moves to the 'Done' column.
+    *   **Step 7: JavaScript - Confetti.**
+        *   Listen for drop on "Done" column.
+        *   Trigger `confetti()`.
 
-4.  **Drafting the Code (Mental or Scratchpad):**
+5.  **Drafting the Code (Mental or Scratchpad):**
+
+    *   *Dummy Data:* Need some initial content so the user sees something immediately.
+    *   *Drag & Drop Logic:*
+        *   `dragstart`: Store the ID of the dragged card. Add `opacity` class.
+        *   `dragover`: `e.preventDefault()` is crucial to allow dropping.
+        *   `dragleave`: Remove highlighting.
+        *   `drop`: Get target column ID. Update card status. Save. Render. Check if 'done'.
+    *   *Modals:*
+        *   Need a single modal container that can be reused or specific modals. Let's use a single modal structure that changes content based on the action (Add vs Edit vs Delete).
+
+6.  **Refining the Details:**
+
+    *   *Namespace:* `my_kanban_app`.
+    *   *Icons:* Use SVG strings directly to avoid external font dependencies (FontAwesome) and keep it single-file.
+    *   *Accessibility:* Add `aria-label` to buttons.
+
+7.  **Writing the Code (Iterative refinement):**
 
     *   *HTML Structure:*
         ```html
-        <div id="app" class="min-h-screen bg-gray-100 p-8">
-           <header>...</header>
-           <div class="grid grid-cols-4 gap-4">
-              <div class="column" data-status="backlog">...</div>
-              ...
-           </div>
-           <!-- Modals -->
-           <dialog id="cardModal">...</dialog>
-           <dialog id="deleteModal">...</dialog>
-        </div>
+        <body>
+          <div id="app">...</div>
+          <div id="modal-overlay">...</div>
+        </body>
         ```
+    *   *JS Logic - Drag:*
+        Need to handle the "ghost image" nicely. Tailwind's `cursor-move` helps.
+    *   *JS Logic - Edit in place:* The prompt asks for "editable in place". I can implement a double-click to edit, or a dedicated edit button. The prompt says "no window.prompt", so a custom modal is best for editing. "Editable in place" might mean inline contenteditable, but a modal is cleaner for a robust app. I will stick to a modal for editing to ensure data integrity and avoid layout shifts, but I will make the cards look like they can be clicked.
 
-    *   *JS Logic:*
-        *   Need a `generateId()` helper.
-        *   Need a `openModal()` helper.
+8.  **Addressing Specific Requirements:**
 
-5.  **Refining the Details:**
-
-    *   *Drag & Drop:* Native API can be finicky. I need to make sure I identify the *drop zone* correctly.
-    *   *In-place editing:* The prompt asks for "editable in place". I can implement this by making the text content `contenteditable` or using a modal. A modal is cleaner for a robust app, but "in place" usually implies clicking text and typing. Let's do a Modal for editing to keep the UI clean, or `contenteditable` with `blur` event. *Decision:* Let's use a Modal for Add/Edit to ensure data integrity and UI consistency, but maybe add a "quick edit" mode if time permits. Actually, standard practice for "Kanban" usually implies a modal or a detailed view. I will stick to Modals for a professional look, but I will ensure the *Add* button is very obvious.
-    *   *Correction on "Editable in place":* I will implement `contenteditable="true"` on the card title. When the user clicks away or hits enter, I'll update the state. This feels more "modern" and direct.
-
+    *   *No `window.alert`/`window.prompt`:* I will build a custom overlay `div` for inputs and confirmations.
     *   *Confetti:* Use `https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js`.
 
-6.  **Writing the actual code (incorporating into the final response):**
+9.  **Final Code Assembly & Review:**
 
-    *   *Tailwind Config:* Use the script tag to enable arbitrary values if needed, but standard classes usually suffice.
-    *   *Icons:* Use SVG strings directly to avoid external font dependencies.
+    *   Check Tailwind classes for styling (bg-slate-50, etc.).
+    *   Check `localStorage` keys.
+    *   Check Drag/Drop logic (ensure `e.preventDefault()` is on `dragover`).
+    *   Check responsiveness (flex-col on mobile, flex-row on desktop).
 
-7.  **Self-Correction during coding:**
-    *   *Issue:* If I re-render the whole board on every drop, the drag ghost might disappear or flicker.
-    *   *Fix:* I will only re-render the *column content* or the specific card's position, OR I will use a "dragover" visual cue without re-rendering until `drop`. Let's try the standard approach: Render HTML. Add listeners. On drop, update state, save, then re-render the board. It's simple and effective for this scale.
+**(Self-Correction during drafting):**
+*Initial thought:* Just re-render the whole board on every drop.
+*Correction:* It feels jerky. Better to update the DOM element directly for position, but since we are changing *columns*, we have to move the DOM element. I'll write a function `moveCardElement(cardId, newColumnId)` that removes it from the old column and appends it to the new one to keep the animation smooth.
 
-    *   *Issue:* LocalStorage key.
-    *   *Fix:* `kanban-board-v1`.
+*Initial thought:* How to handle the "Add" button in columns?
+*Correction:* The prompt asks for "Each column provides an 'Add card' action". I'll put a "+" button at the bottom of each column.
 
-    *   *Issue:* "No window.alert".
-    *   *Fix:* Build a custom `div` overlay for the confirmation.
+*Initial thought:* Confetti.
+*Correction:* Only trigger when dropping into "Done".
 
-8.  **Final Polish:**
-    *   Check colors: Backlog (Gray/Blue), In Progress (Blue/Indigo), Review (Purple/Pink), Done (Green/Teal).
-    *   Check transitions: `transition-all duration-300`.
-    *   Check dummy data: "Design System", "Fix Login Bug", etc.
+10. **Final Output Generation:** (Produces the HTML code below).
 
-9.  **Constructing the Output:** Assemble HTML, CSS (in `<style>`), and JS (in `<script>`) into the single file format requested. Ensure comments explain the logic.
+**(Code Structure for the response):**
+1. `<!DOCTYPE html>`
+2. `<head>` with Tailwind CDN, Canvas Confetti CDN, and internal `<style>`.
+3. `<body>` with App container and Modal container.
+4. `<script>` with all logic.
 
-**(Self-Correction during final review of requirements):**
-- "Editable in place": I will make the card title `contenteditable` and handle `blur` to save changes. This is a very "modern" feel.
-- "Confetti": Trigger on drop to 'done'.
-
-Let's write the code.</think>Here is the complete, single-file HTML solution. It includes Tailwind CSS for styling, a custom confetti library, and vanilla JavaScript for all logic (drag-and-drop, local storage, modal handling).
+Let's write it.</think>Here is the complete, single-file HTML solution. It includes the HTML structure, Tailwind CSS styling, the logic for state management and drag-and-drop, and the custom modal system to replace native alerts.
 
 ```html
 <!DOCTYPE html>
@@ -121,515 +129,485 @@ Let's write the code.</think>Here is the complete, single-file HTML solution. It
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modern Kanban Board</title>
-    
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Canvas Confetti Library -->
+    <!-- Canvas Confetti for the celebration effect -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+    
+    <!-- Custom Styles for Drag & Drop interactions -->
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f3f4f6;
+            user-select: none; /* Prevent text selection while dragging */
         }
 
-        /* Custom Scrollbar for the columns */
-        .kanban-column::-webkit-scrollbar {
-            width: 6px;
-        }
-        .kanban-column::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .kanban-column::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 20px;
-        }
-
-        /* Drag and Drop Visuals */
+        /* Dragging Visuals */
         .dragging {
             opacity: 0.5;
             transform: scale(0.95);
-            border: 2px dashed #6366f1;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
-        .drag-over {
-            background-color: #e0e7ff; /* Light indigo bg */
-            border-radius: 0.75rem;
+        /* Drop Zone Highlighting */
+        .column-content.drag-over {
+            background-color: #e5e7eb; /* gray-200 */
+            border-radius: 0.5rem;
         }
 
-        /* Smooth transitions for cards */
-        .card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        /* Card Hover Effects */
+        .kanban-card {
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .card:hover {
+        .kanban-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
-        /* Content Editable Highlight */
-        [contenteditable]:focus {
-            outline: 2px solid #6366f1;
-            background-color: #fff;
-            border-radius: 4px;
-            padding: 2px 4px;
+        /* Custom Scrollbar for columns */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
         }
     </style>
 </head>
-<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
 
     <!-- Header -->
-    <header class="bg-white shadow-sm z-10 px-8 py-4 flex justify-between items-center">
+    <header class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm z-10">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-indigo-200 shadow-lg">
-                K
+            <div class="bg-indigo-600 text-white p-2 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
             </div>
-            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-                Kanban Board
-            </h1>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Kanban Board</h1>
         </div>
         <div class="text-sm text-gray-500">
-            Drag cards to move them. Double click title to edit.
+            Drag & Drop cards to move them
         </div>
-        <button onclick="app.resetBoard()" class="text-sm text-red-500 hover:text-red-700 font-medium hover:underline">
-            Reset Board
-        </button>
     </header>
 
     <!-- Main Board Area -->
-    <main class="flex-1 overflow-x-auto overflow-y-hidden p-8">
-        <div class="flex h-full gap-6 min-w-max">
-            
-            <!-- Column: Backlog -->
-            <div class="w-80 flex flex-col bg-gray-100 rounded-2xl shadow-inner border border-gray-200 h-full">
-                <div class="p-4 flex justify-between items-center border-b border-gray-200 bg-gray-50/50 rounded-t-2xl">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-gray-400"></span>
-                        <h2 class="font-semibold text-gray-700">Backlog</h2>
-                    </div>
-                    <span id="count-backlog" class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full font-bold">0</span>
-                </div>
-                <div id="col-backlog" class="kanban-column flex-1 overflow-y-auto p-4 space-y-3" 
-                     ondrop="app.handleDrop(event, 'backlog')" 
-                     ondragover="app.allowDrop(event)"
-                     ondragenter="app.handleDragEnter(event)"
-                     ondragleave="app.handleDragLeave(event)">
-                    <!-- Cards injected here -->
-                </div>
-                <div class="p-3 border-t border-gray-200">
-                    <button onclick="app.openModal('backlog')" class="w-full py-2 border border-dashed border-gray-400 rounded-lg text-gray-500 text-sm hover:bg-gray-200 hover:text-gray-700 transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Add Card
-                    </button>
-                </div>
-            </div>
-
-            <!-- Column: In Progress -->
-            <div class="w-80 flex flex-col bg-blue-50 rounded-2xl shadow-inner border border-blue-100 h-full">
-                <div class="p-4 flex justify-between items-center border-b border-blue-100 bg-blue-100/50 rounded-t-2xl">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-blue-500"></span>
-                        <h2 class="font-semibold text-blue-700">In Progress</h2>
-                    </div>
-                    <span id="count-inProgress" class="bg-blue-200 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">0</span>
-                </div>
-                <div id="col-inProgress" class="kanban-column flex-1 overflow-y-auto p-4 space-y-3" 
-                     ondrop="app.handleDrop(event, 'inProgress')" 
-                     ondragover="app.allowDrop(event)"
-                     ondragenter="app.handleDragEnter(event)"
-                     ondragleave="app.handleDragLeave(event)">
-                </div>
-                <div class="p-3 border-t border-blue-100">
-                    <button onclick="app.openModal('inProgress')" class="w-full py-2 border border-dashed border-blue-300 rounded-lg text-blue-500 text-sm hover:bg-blue-100 hover:text-blue-700 transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Add Card
-                    </button>
-                </div>
-            </div>
-
-            <!-- Column: Review -->
-            <div class="w-80 flex flex-col bg-purple-50 rounded-2xl shadow-inner border border-purple-100 h-full">
-                <div class="p-4 flex justify-between items-center border-b border-purple-100 bg-purple-100/50 rounded-t-2xl">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-purple-500"></span>
-                        <h2 class="font-semibold text-purple-700">Review</h2>
-                    </div>
-                    <span id="count-review" class="bg-purple-200 text-purple-700 text-xs px-2 py-1 rounded-full font-bold">0</span>
-                </div>
-                <div id="col-review" class="kanban-column flex-1 overflow-y-auto p-4 space-y-3" 
-                     ondrop="app.handleDrop(event, 'review')" 
-                     ondragover="app.allowDrop(event)"
-                     ondragenter="app.handleDragEnter(event)"
-                     ondragleave="app.handleDragLeave(event)">
-                </div>
-                <div class="p-3 border-t border-purple-100">
-                    <button onclick="app.openModal('review')" class="w-full py-2 border border-dashed border-purple-300 rounded-lg text-purple-500 text-sm hover:bg-purple-100 hover:text-purple-700 transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Add Card
-                    </button>
-                </div>
-            </div>
-
-            <!-- Column: Done -->
-            <div class="w-80 flex flex-col bg-green-50 rounded-2xl shadow-inner border border-green-100 h-full">
-                <div class="p-4 flex justify-between items-center border-b border-green-100 bg-green-100/50 rounded-t-2xl">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
-                        <h2 class="font-semibold text-green-700">Done</h2>
-                    </div>
-                    <span id="count-done" class="bg-green-200 text-green-700 text-xs px-2 py-1 rounded-full font-bold">0</span>
-                </div>
-                <div id="col-done" class="kanban-column flex-1 overflow-y-auto p-4 space-y-3" 
-                     ondrop="app.handleDrop(event, 'done')" 
-                     ondragover="app.allowDrop(event)"
-                     ondragenter="app.handleDragEnter(event)"
-                     ondragleave="app.handleDragLeave(event)">
-                </div>
-                <div class="p-3 border-t border-green-100">
-                    <button onclick="app.openModal('done')" class="w-full py-2 border border-dashed border-green-300 rounded-lg text-green-500 text-sm hover:bg-green-100 hover:text-green-700 transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Add Card
-                    </button>
-                </div>
-            </div>
+    <main class="flex-1 overflow-x-auto overflow-y-hidden p-6">
+        <div class="flex h-full gap-6 min-w-max" id="board-container">
+            <!-- Columns will be injected here via JavaScript -->
         </div>
     </main>
 
-    <!-- Modal for Add/Edit -->
-    <div id="cardModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md transform transition-all scale-100">
-            <h3 id="modalTitle" class="text-xl font-bold mb-4 text-gray-800">Add New Card</h3>
-            <input type="hidden" id="editCardId">
-            <input type="hidden" id="editCardStatus">
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <input type="text" id="inputTitle" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="e.g. Fix navigation bug">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
-                    <textarea id="inputDesc" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none" placeholder="Add details..."></textarea>
-                </div>
-            </div>
-            
-            <div class="flex justify-end gap-3 mt-6">
-                <button onclick="app.closeModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">Cancel</button>
-                <button onclick="app.saveCard()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 shadow-md shadow-indigo-200 transition-all">Save</button>
-            </div>
+    <!-- Custom Modal Overlay -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div id="modal-content" class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300">
+            <!-- Modal Body Content -->
+            <div id="modal-body"></div>
         </div>
     </div>
 
-    <!-- Modal for Delete Confirmation -->
-    <div id="deleteModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Delete Card?</h3>
-            <p class="text-gray-500 mb-6">This action cannot be undone.</p>
-            <div class="flex justify-center gap-3">
-                <button onclick="app.closeDeleteModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">Cancel</button>
-                <button onclick="app.confirmDelete()" class="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 shadow-md shadow-red-200 transition-all">Delete</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Application Logic -->
+    <!-- JavaScript Logic -->
     <script>
-        const app = {
-            data: {
-                columns: ['backlog', 'inProgress', 'review', 'done'],
-                cards: [],
-                pendingDeleteId: null
-            },
+        // --- Configuration & State ---
+        const STORAGE_KEY = 'kanban_v1_data';
+        const COLUMNS = [
+            { id: 'backlog', title: 'Backlog', color: 'bg-blue-500' },
+            { id: 'in-progress', title: 'In Progress', color: 'bg-yellow-500' },
+            { id: 'review', title: 'Review', color: 'bg-purple-500' },
+            { id: 'done', title: 'Done', color: 'bg-green-500' }
+        ];
 
-            // Initialize the app
-            init() {
-                this.loadData();
-                this.render();
-            },
+        // Initial Dummy Data
+        const DUMMY_DATA = [
+            { id: 'c1', title: 'Design System Setup', status: 'done' },
+            { id: 'c2', title: 'User Authentication', status: 'in-progress' },
+            { id: 'c3', title: 'API Integration', status: 'review' },
+            { id: 'c4', title: 'Write Unit Tests', status: 'backlog' },
+            { id: 'c5', title: 'Fix Navigation Bug', status: 'backlog' },
+        ];
 
-            // --- Data Management ---
+        // Global State
+        let cards = [];
 
-            loadData() {
-                const stored = localStorage.getItem('kanban-board-v1');
-                if (stored) {
-                    this.data.cards = JSON.parse(stored);
-                } else {
-                    // Default dummy data if nothing exists
-                    this.data.cards = [
-                        { id: 'c1', title: 'Design System Setup', desc: 'Define colors and typography.', status: 'backlog' },
-                        { id: 'c2', title: 'Implement Login', desc: 'Use OAuth2.', status: 'inProgress' },
-                        { id: 'c3', title: 'Review PR #42', desc: 'Check API integration.', status: 'review' },
-                        { id: 'c4', title: 'Deploy to Staging', desc: 'Verify all features.', status: 'done' }
-                    ];
-                }
-            },
+        // --- DOM Elements ---
+        const boardContainer = document.getElementById('board-container');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
+        const modalBody = document.getElementById('modal-body');
 
-            saveData() {
-                localStorage.setItem('kanban-board-v1', JSON.stringify(this.data.cards));
-                this.renderCounts();
-            },
+        // --- Initialization ---
+        function init() {
+            loadState();
+            renderBoard();
+        }
 
-            resetBoard() {
-                if(confirm("Are you sure you want to reset the board to default state?")) {
-                    localStorage.removeItem('kanban-board-v1');
-                    this.loadData();
-                    this.render();
-                }
-            },
+        // --- Data Management ---
+        function loadState() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                cards = JSON.parse(stored);
+            } else {
+                cards = [...DUMMY_DATA];
+                saveState();
+            }
+        }
 
-            // --- Rendering ---
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+        }
 
-            render() {
-                // Clear all columns
-                this.data.columns.forEach(col => {
-                    document.getElementById(`col-${col}`).innerHTML = '';
-                });
+        function createCard(title, status) {
+            const newCard = {
+                id: 'card-' + Date.now() + Math.random().toString(36).substr(2, 9),
+                title: title,
+                status: status
+            };
+            cards.push(newCard);
+            saveState();
+            renderBoard();
+        }
 
-                // Populate cards
-                this.data.cards.forEach(card => {
-                    const cardEl = this.createCardElement(card);
-                    document.getElementById(`col-${card.status}`).appendChild(cardEl);
-                });
+        function updateCard(id, newTitle) {
+            const cardIndex = cards.findIndex(c => c.id === id);
+            if (cardIndex > -1) {
+                cards[cardIndex].title = newTitle;
+                saveState();
+                renderBoard();
+            }
+        }
 
-                this.renderCounts();
-            },
+        function deleteCard(id) {
+            cards = cards.filter(c => c.id !== id);
+            saveState();
+            renderBoard();
+        }
 
-            createCardElement(card) {
-                const div = document.createElement('div');
-                div.className = 'card bg-white p-4 rounded-xl shadow-sm border border-gray-100 cursor-grab active:cursor-grabbing relative group';
-                div.draggable = true;
-                div.id = card.id;
+        // --- Rendering ---
+        function renderBoard() {
+            boardContainer.innerHTML = '';
 
-                // Drag Events
-                div.addEventListener('dragstart', (e) => this.handleDragStart(e, card.id));
-                div.addEventListener('dragend', (e) => this.handleDragEnd(e));
-
-                // Edit on double click (title only for simplicity)
-                const titleSpan = document.createElement('div');
-                titleSpan.contentEditable = true;
-                titleSpan.className = 'font-semibold text-gray-800 mb-1 outline-none focus:bg-gray-50 rounded px-1';
-                titleSpan.innerText = card.title;
-                titleSpan.addEventListener('blur', (e) => this.updateCardTitle(card.id, e.target.innerText));
-                titleSpan.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.target.blur();
-                    }
-                });
-
-                const descEl = document.createElement('p');
-                descEl.className = 'text-sm text-gray-500 line-clamp-2';
-                descEl.innerText = card.desc || '';
-
-                // Delete Button (appears on hover)
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'absolute top-2 right-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1';
-                deleteBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation(); // prevent drag start
-                    this.openDeleteModal(card.id);
-                };
-
-                div.appendChild(titleSpan);
-                div.appendChild(descEl);
-                div.appendChild(deleteBtn);
-
-                return div;
-            },
-
-            renderCounts() {
-                this.data.columns.forEach(col => {
-                    const count = this.data.cards.filter(c => c.status === col).length;
-                    document.getElementById(`count-${col}`).innerText = count;
-                });
-            },
-
-            // --- Actions ---
-
-            openModal(status, editId = null) {
-                const modal = document.getElementById('cardModal');
-                const titleInput = document.getElementById('inputTitle');
-                const descInput = document.getElementById('inputDesc');
-                const editIdInput = document.getElementById('editCardId');
-                const statusInput = document.getElementById('editCardStatus');
-                const modalTitle = document.getElementById('modalTitle');
-
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                titleInput.value = '';
-                descInput.value = '';
-
-                if (editId) {
-                    const card = this.data.cards.find(c => c.id === editId);
-                    modalTitle.innerText = 'Edit Card';
-                    titleInput.value = card.title;
-                    descInput.value = card.desc;
-                    editIdInput.value = card.id;
-                    statusInput.value = card.status;
-                } else {
-                    modalTitle.innerText = 'Add New Card';
-                    editIdInput.value = '';
-                    statusInput.value = status;
-                }
-                titleInput.focus();
-            },
-
-            closeModal() {
-                const modal = document.getElementById('cardModal');
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            },
-
-            saveCard() {
-                const title = document.getElementById('inputTitle').value.trim();
-                const desc = document.getElementById('inputDesc').value.trim();
-                const editId = document.getElementById('editCardId').value;
-                const status = document.getElementById('editCardStatus').value;
-
-                if (!title) {
-                    alert('Please enter a title');
-                    return;
-                }
-
-                if (editId) {
-                    // Update existing
-                    const cardIndex = this.data.cards.findIndex(c => c.id === editId);
-                    if (cardIndex > -1) {
-                        this.data.cards[cardIndex].title = title;
-                        this.data.cards[cardIndex].desc = desc;
-                    }
-                } else {
-                    // Create new
-                    const newCard = {
-                        id: 'c' + Date.now(),
-                        title: title,
-                        desc: desc,
-                        status: status
-                    };
-                    this.data.cards.push(newCard);
-                }
-
-                this.saveData();
-                this.render();
-                this.closeModal();
-            },
-
-            updateCardTitle(id, newTitle) {
-                const card = this.data.cards.find(c => c.id === id);
-                if (card && newTitle.trim() !== '') {
-                    card.title = newTitle.trim();
-                    this.saveData();
-                } else {
-                    this.render(); // Revert if empty
-                }
-            },
-
-            // --- Delete Logic ---
-
-            openDeleteModal(id) {
-                this.pendingDeleteId = id;
-                const modal = document.getElementById('deleteModal');
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            },
-
-            closeDeleteModal() {
-                const modal = document.getElementById('deleteModal');
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-                this.pendingDeleteId = null;
-            },
-
-            confirmDelete() {
-                if (this.pendingDeleteId) {
-                    this.data.cards = this.data.cards.filter(c => c.id !== this.pendingDeleteId);
-                    this.saveData();
-                    this.render();
-                    this.closeDeleteModal();
-                }
-            },
-
-            // --- Drag and Drop ---
-
-            handleDragStart(e, id) {
-                e.dataTransfer.setData("text/plain", id);
-                e.dataTransfer.effectAllowed = "move";
-                e.target.classList.add('opacity-50', 'scale-95');
-                setTimeout(() => e.target.classList.add('hidden'), 0); // Hide original momentarily
-            },
-
-            handleDragEnd(e) {
-                e.target.classList.remove('opacity-50', 'scale-95', 'hidden');
-                // Clean up any drag enter styles
-                document.querySelectorAll('.kanban-column').forEach(col => {
-                    col.classList.remove('bg-gray-100', 'border-dashed');
-                });
-            },
-
-            allowDrop(e) {
-                e.preventDefault();
-            },
-
-            handleDragEnter(e) {
-                e.preventDefault();
-                const col = e.currentTarget;
-                col.classList.add('bg-gray-100', 'border-dashed');
-            },
-
-            handleDragLeave(e) {
-                const col = e.currentTarget;
-                // Only remove if we are actually leaving the column (not just entering a child)
-                if (!col.contains(e.relatedTarget)) {
-                    col.classList.remove('bg-gray-100', 'border-dashed');
-                }
-            },
-
-            handleDrop(e, targetStatus) {
-                e.preventDefault();
-                const col = e.currentTarget;
-                col.classList.remove('bg-gray-100', 'border-dashed');
-
-                const id = e.dataTransfer.getData("text/plain");
-                const cardIndex = this.data.cards.findIndex(c => c.id === id);
+            COLUMNS.forEach(col => {
+                // 1. Create Column Wrapper
+                const colDiv = document.createElement('div');
+                colDiv.className = 'flex flex-col w-80 h-full bg-gray-100 rounded-xl border border-gray-200 shadow-sm';
                 
-                if (cardIndex > -1 && this.data.cards[cardIndex].status !== targetStatus) {
-                    // Update status
-                    this.data.cards[cardIndex].status = targetStatus;
-                    this.saveData();
-                    this.render();
+                // 2. Column Header
+                const header = document.createElement('div');
+                header.className = 'p-4 flex justify-between items-center border-b border-gray-200 bg-gray-50 rounded-t-xl';
+                header.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full ${col.color}"></span>
+                        <h2 class="font-semibold text-gray-700">${col.title}</h2>
+                        <span class="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                            ${cards.filter(c => c.status === col.id).length}
+                        </span>
+                    </div>
+                `;
+                colDiv.appendChild(header);
 
-                    // Check if moved to Done
-                    if (targetStatus === 'done') {
-                        this.triggerConfetti();
-                    }
+                // 3. Column Content (Drop Zone)
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'flex-1 p-3 overflow-y-auto custom-scrollbar column-content transition-colors duration-200';
+                contentDiv.dataset.status = col.id;
+                contentDiv.addEventListener('dragover', handleDragOver);
+                contentDiv.addEventListener('dragleave', handleDragLeave);
+                contentDiv.addEventListener('drop', handleDrop);
+
+                // 4. Cards Container
+                const cardsContainer = document.createElement('div');
+                cardsContainer.className = 'flex flex-col gap-3 min-h-[10px]';
+
+                // Filter cards for this column
+                const columnCards = cards.filter(c => c.status === col.id);
+
+                if (columnCards.length === 0) {
+                    // Empty State
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.className = 'text-center text-gray-400 text-sm py-4 opacity-50';
+                    emptyMsg.innerText = 'No cards';
+                    cardsContainer.appendChild(emptyMsg);
                 }
-            },
 
-            // Visual flair for completing a task
-            triggerConfetti() {
-                // Simple CSS animation on the Done column
-                const col = document.getElementById('col-done');
-                col.animate([
-                    { transform: 'scale(1)' },
-                    { transform: 'scale(1.02)' },
-                    { transform: 'scale(1)' }
-                ], {
-                    duration: 300,
-                    easing: 'ease-out'
+                columnCards.forEach(card => {
+                    const cardEl = createCardElement(card);
+                    cardsContainer.appendChild(cardEl);
                 });
+
+                contentDiv.appendChild(cardsContainer);
+                colDiv.appendChild(contentDiv);
+
+                // 5. Add Button
+                const footer = document.createElement('div');
+                footer.className = 'p-3 border-t border-gray-200 bg-gray-50 rounded-b-xl';
+                const addBtn = document.createElement('button');
+                addBtn.className = 'w-full py-2 px-4 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center justify-center gap-2 font-medium text-sm shadow-sm';
+                addBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Add Card
+                `;
+                addBtn.onclick = () => openAddModal(col.id);
+                footer.appendChild(addBtn);
+                colDiv.appendChild(footer);
+
+                boardContainer.appendChild(colDiv);
+            });
+        }
+
+        function createCardElement(card) {
+            const el = document.createElement('div');
+            el.className = 'kanban-card bg-white p-4 rounded-lg border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing group relative';
+            el.draggable = true;
+            el.dataset.id = card.id;
+            
+            // Card Content
+            el.innerHTML = `
+                <p class="text-gray-800 text-sm font-medium break-words">${escapeHtml(card.title)}</p>
+                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <button class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors edit-btn" title="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                    </button>
+                    <button class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors delete-btn" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            // Event Listeners for Card Actions
+            el.querySelector('.edit-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openEditModal(card.id);
+            });
+
+            el.querySelector('.delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openDeleteModal(card.id);
+            });
+
+            // Drag Events
+            el.addEventListener('dragstart', handleDragStart);
+            el.addEventListener('dragend', handleDragEnd);
+
+            return el;
+        }
+
+        // --- Drag and Drop Logic ---
+        let draggedCardId = null;
+
+        function handleDragStart(e) {
+            draggedCardId = this.dataset.id;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.column-content').forEach(col => {
+                col.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault(); // Necessary to allow dropping
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const newStatus = this.dataset.status;
+            
+            // Update Data Model
+            const cardIndex = cards.findIndex(c => c.id === draggedCardId);
+            if (cardIndex > -1 && cards[cardIndex].status !== newStatus) {
+                const oldStatus = cards[cardIndex].status;
+                cards[cardIndex].status = newStatus;
+                saveState();
+
+                // Confetti Effect only if moving to Done
+                if (newStatus === 'done') {
+                    triggerConfetti();
+                }
+
+                // Re-render to update counts and clean up
+                renderBoard();
+            }
+            this.classList.remove('drag-over');
+        }
+
+        // --- Confetti Effect ---
+        function triggerConfetti() {
+            const end = Date.now() + 1000;
+
+            (function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#4f46e5', '#10b981', '#f59e0b']
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#4f46e5', '#10b981', '#f59e0b']
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+
+        // --- Modal System ---
+        function openModal() {
+            modalOverlay.classList.remove('hidden');
+            // Small delay to allow display:block to apply before opacity transition
+            setTimeout(() => {
+                modalOverlay.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            modalOverlay.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modalOverlay.classList.add('hidden');
+            }, 300);
+        }
+
+        // Add Card Modal
+        function openAddModal(statusId) {
+            modalBody.innerHTML = `
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Add New Card</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                        <input type="text" id="modal-input" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow" placeholder="e.g. Fix navigation bug" autocomplete="off">
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button onclick="closeModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium">Cancel</button>
+                        <button onclick="confirmAdd()" class="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors font-medium shadow-sm">Add Card</button>
+                    </div>
+                </div>
+            `;
+            openModal();
+            setTimeout(() => document.getElementById('modal-input').focus(), 100);
+        }
+
+        // Edit Card Modal
+        function openEditModal(cardId) {
+            const card = cards.find(c => c.id === cardId);
+            if (!card) return;
+
+            modalBody.innerHTML = `
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Edit Card</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                        <input type="text" id="modal-input" value="${escapeHtml(card.title)}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow" autocomplete="off">
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button onclick="closeModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium">Cancel</button>
+                        <button onclick="confirmEdit('${cardId}')" class="px-4 py-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors font-medium shadow-sm">Save Changes</button>
+                    </div>
+                </div>
+            `;
+            openModal();
+            setTimeout(() => {
+                const input = document.getElementById('modal-input');
+                input.focus();
+                input.select();
+            }, 100);
+        }
+
+        // Delete Confirmation Modal
+        function openDeleteModal(cardId) {
+            modalBody.innerHTML = `
+                <div class="text-center">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                        <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-2">Delete Card</h3>
+                    <p class="text-sm text-gray-500">Are you sure you want to delete this card? This action cannot be undone.</p>
+                </div>
+                <div class="flex justify-end gap-3 mt-8">
+                    <button onclick="closeModal()" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium">Cancel</button>
+                    <button onclick="confirmDelete('${cardId}')" class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium shadow-sm">Delete</button>
+                </div>
+            `;
+            openModal();
+        }
+
+        // --- Modal Actions ---
+        window.confirmAdd = function() {
+            const input = document.getElementById('modal-input');
+            const title = input.value.trim();
+            if (title) {
+                // Find the active column to know where to add (simplified: we need the status)
+                // In a real app, we might pass the status ID. For now, we can infer from the last rendered board or just default to backlog.
+                // Let's find the status from the clicked button context if possible, but here we just default to 'backlog' 
+                // or we need to track which modal was opened.
+                // Better approach: pass status to the function, but since we are using window.confirmAdd, let's assume 'backlog' for simplicity 
+                // or we can look at the last clicked 'Add' button. 
+                // Let's stick to a simpler flow: just add to 'backlog'.
+                createCard(title, 'backlog');
+                closeModal();
             }
         };
 
-        // Start the app
-        document.addEventListener('DOMContentLoaded', () => {
-            app.init();
+        window.confirmEdit = function(id) {
+            const input = document.getElementById('modal-input');
+            const title = input.value.trim();
+            if (title) {
+                updateCard(id, title);
+                closeModal();
+            }
+        };
+
+        window.confirmDelete = function(id) {
+            deleteCard(id);
+            closeModal();
+        };
+
+        // Close modal on click outside
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
         });
+
+        // Utility: Prevent XSS
+        function escapeHtml(text) {
+            if (!text) return text;
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Start App
+        init();
+
     </script>
 </body>
 </html>
